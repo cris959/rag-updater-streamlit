@@ -1,0 +1,54 @@
+
+# ========================================================
+# ARCHIVO DE CONTEXTO GLOBAL E INFRAESTRUCTURA - CHRISTIAN DEV
+# ========================================================
+
+# 1. ENTORNO DE PRODUCCIÓN Y SERVIDORES (OCI)
+Proveedor Cloud: Oracle Cloud Infrastructure (OCI) Always Free Ampere (Arquitectura ARM).
+Ubicación del Servidor: Región Ashburn.
+Sistema Operativo: Ubuntu Server 22.04 LTS.
+IP Pública del Servidor: 159.112.143.193
+Acceso de Gestión SSH: ssh -i C:\Desarrollo\oracle_key.key ubuntu@159.112.143.193
+Servidor Web: Nginx actuando como proxy inverso en puerto 8000 hacia el backend y administrando certificados SSL de Let's Encrypt / Certbot.
+Scripts de Automatización en Ubuntu:
+- ./start_forohub.sh: Limpia puertos, asegura la DB, reinicia el servicio y verifica conectividad con Gemini.
+- ./stop_forohub.sh: Detiene el servicio Java de forma segura.
+Comando de Logs: sudo journalctl -u forohub -f
+
+# 2. PROYECTO: FORO HUB (API REST)
+Repositorio Original: https://github.com/cris959/foro-hub.git
+Dominio Público: foro-hub-christian.duckdns.org
+Autor: Christian Garay (Cris959 / Christian Dev).
+Stack Tecnológico: Java 17, Spring Boot 3.x, Spring Security, Spring AI (Gemini y Mistral AI), SpringDoc OpenAPI (Swagger UI), MySQL Connector, Hibernate, JJWT, JTokkit, Lombok, Maven.
+
+## ARQUITECTURA DE DATOS (MODELO RELACIONAL)
+- Entidad Usuario: Long id, String nombre, String email, String password, Boolean activo. Relación: tiene muchos perfiles, autor de muchos tópicos y respuestas.
+- Entidad Perfil: Long id, PerfilNombre nombre (Enumeración: ROLE_ADMIN, ROLE_USER).
+- Entidad Curso: Long id, String nombre, String categoria, Boolean activo.
+- Entidad Topico: Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, Boolean activo (Borrado lógico / Soft Delete vía @SQLRestriction). Relaciones: Pertenece a un Curso, creado por un Usuario (autor), contiene lista de Respuestas.
+- Entidad Respuesta: Long id, String mensaje, LocalDateTime fechaCreacion, Boolean solucion, Boolean activo. Relaciones: Vinculado a un Tópico, creado por un Usuario (autor).
+- Enumeración StatusTopico: NO_RESPONDIDO, NO_SOLUCIONADO, SOLUCIONADO, CERRADO.
+
+## FLUJO OPERATIVO Y SEGURIDAD (RBAC)
+- Autenticación: Stateless mediante Spring Security y tokens JWT cifrados usando PasswordEncoder (BCrypt).
+- Endpoint Login: POST /login (Público, devuelve el JWT Token).
+- Roles y Permisos:
+  * ROLE_ADMIN: Control total del foro, administración de usuarios, cursos, perfiles y supervisión de logs de IA.
+  * ROLE_USER: Participación en la comunidad (Crear tópicos, responder, marcar solución).
+- Swagger UI de Documentación: https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html (Permite autorizar mediante Bearer Token).
+
+## MODERACIÓN INTELIGENTE MULTICAPA (FAILOVER DE IA)
+Para mitigar fallos de red o límites de cuotas, el Foro Hub procesa los textos mediante tres niveles en cascada:
+1. Capa Primaria (Cloud): Google Gemini (Modelo: Gemini-3-Flash-Preview) para análisis semántico profundo y detección de insultos o spam.
+2. Capa Secundaria (Cloud - Failover): Mistral AI (Modelo: Mistral Large) que se activa automáticamente si Gemini reporta latencia o caída del servicio.
+3. Capa de Seguridad Local (Offline): Filtro Heurístico basado en código Java puro que aplica reglas de negocio, análisis de palabras clave y puntuación de riesgo si ambos proveedores de IA están caídos.
+Observabilidad: Implementation del patrón Decorator (LoggingChatModelDecorator) para capturar latencias, tokens de entrada y salida, y metadata exacta de cada llamada a las APIs de IA.
+
+# 3. VARIABLES DE ENTORNO REQUERIDAS (PRODUCCIÓN)
+- DB_NAME=foro_hub
+- DB_USER=tu_usuario
+- DB_PASSWORD=tu_password
+- JWT_SECRET=clave_secreta_tokens
+- PROJECT_ID=id_proyecto_google_genai
+- GEMINI_APIKEY=key_de_gemini
+- MISTRAL_APIKEY=key_de_mistral

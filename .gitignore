@@ -1,0 +1,67 @@
+# --- Entornos Virtuales ---
+.venv/
+venv/
+env/
+ENV/
+bin/
+lib/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# --- Variables de Entorno y Credenciales (CRÍTICO) ---
+.env
+.env.local
+.env.*
+*.env
+GROQ_API_KEY
+keys.txt
+secrets.toml
+
+# --- Archivos de Datos (Evita subir CSVs pesados a GitHub) ---
+*.csv
+*.xlsx
+*.json
+*.sqlite
+*.db
+# EXCEPCIÓN: Permitir explícitamente el CSV de muestra para el proyecto final
+!data/datos_ejemplo.csv
+
+# --- Configuración de IDEs (VS Code y PyCharm) ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# --- Streamlit ---
+.streamlit/
+
+# --- Base de Datos Vectorial Local (FAISS) ---
+faiss_index_oci/
+
+# --- Credenciales de Infraestructura Cloud ---
+*.key
+contexto_infraestructura.txt
+
+# Permitir explícitamente el contexto del agente
+!contexto_infraestructura.txt

@@ -1,0 +1,9 @@
+# Core Backend & IA
+groq==0.11.0
+python-dotenv==1.0.1
+
+# Herramientas de Búsqueda (Internet sin Rust)
+duckduckgo-search==5.3.1.b1
+
+# Frontend Interactivo
+streamlit==1.36.0
