@@ -1,54 +1,134 @@
+===============================================================================
+CONTEXTO DE LA APLICACIÓN: FORO HUB (API REST)
+===============================================================================
 
-# ========================================================
-# ARCHIVO DE CONTEXTO GLOBAL E INFRAESTRUCTURA - CHRISTIAN DEV
-# ========================================================
+1. DESCRIPCIÓN GENERAL DEL PROYECTO
+-------------------------------------------------------------------------------
+Foro Hub es una API REST robusta para la gestión de comunidades digitales desarrollada con Java y Spring Boot 3.x. Su núcleo incluye un sistema de autenticación avanzada, borrado lógico de datos y una arquitectura de moderación híbrida y resiliente basada en Inteligencia Artificial (Google Gemini y Mistral AI) en conjunto con filtros heurísticos locales.
 
-# 1. ENTORNO DE PRODUCCIÓN Y SERVIDORES (OCI)
-Proveedor Cloud: Oracle Cloud Infrastructure (OCI) Always Free Ampere (Arquitectura ARM).
-Ubicación del Servidor: Región Ashburn.
-Sistema Operativo: Ubuntu Server 22.04 LTS.
-IP Pública del Servidor: 159.112.143.193
-Acceso de Gestión SSH: ssh -i C:\Desarrollo\oracle_key.key ubuntu@159.112.143.193
-Servidor Web: Nginx actuando como proxy inverso en puerto 8000 hacia el backend y administrando certificados SSL de Let's Encrypt / Certbot.
-Scripts de Automatización en Ubuntu:
-- ./start_forohub.sh: Limpia puertos, asegura la DB, reinicia el servicio y verifica conectividad con Gemini.
-- ./stop_forohub.sh: Detiene el servicio Java de forma segura.
-Comando de Logs: sudo journalctl -u forohub -f
+2. ARQUITECTURA DE INFRAESTRUCTURA Y DESPLIEGUE
+-------------------------------------------------------------------------------
+- Entorno de Desarrollo y Producción: Christian Dev (Desarrollador: Christian / Cris959).
+- Servidor Web / Proxy Inverso: Nginx corriendo sobre una instancia Ubuntu Server en Oracle Cloud Infrastructure (OCI) - Región Ashburn (Siempre Gratis / Always Free).
+- Puerto de Escucha Nginx: Escucha en el puerto 8000 para tráfico externo.
+- Redirección (Proxy Pass): Redirige las solicitudes entrantes hacia el backend de Spring Boot que expone la API.
+- Seguridad de Red: Administrado con certificados SSL válidos y renovados automáticamente mediante Let's Encrypt y Certbot.
+- Dominio Público Oficial: https://foro-hub-christian.duckdns.org
+- Documentación Interactiva: https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html (Swagger/SpringDoc OpenAPI).
+- Acceso SSH al Servidor: ssh -i C:\Desarrollo\oracle_key.key ubuntu@159.112.143.193
+- Automatización: Controlado en Ubuntu por scripts de Bash:
+  * `./start_forohub.sh`: Limpia puertos, asegura la DB, reinicia el servicio y verifica conexión con las APIs de IA.
+  * `./stop_forohub.sh`: Detiene los servicios de forma segura.
+  * Monitoreo de logs: `sudo journalctl -u forohub -f`
+  * Reinicio: `sudo systemctl restart forohub`
 
-# 2. PROYECTO: FORO HUB (API REST)
-Repositorio Original: https://github.com/cris959/foro-hub.git
-Dominio Público: foro-hub-christian.duckdns.org
-Autor: Christian Garay (Cris959 / Christian Dev).
-Stack Tecnológico: Java 17, Spring Boot 3.x, Spring Security, Spring AI (Gemini y Mistral AI), SpringDoc OpenAPI (Swagger UI), MySQL Connector, Hibernate, JJWT, JTokkit, Lombok, Maven.
+3. STACK TECNOLÓGICO Y DEPENDENCIAS (MAVEN)
+-------------------------------------------------------------------------------
+- Framework Base: Spring Boot 3.x
+- Seguridad: Spring Security con Autenticación Stateless basada en Tokens JWT (vía biblioteca JJWT).
+- Persistencia de Datos: MySQL Connector, Spring Data JPA, Hibernate.
+- Inteligencia Artificial: Spring AI Gemini (Google GenAI) y Spring AI Mistral (Mistral AI).
+- Utilidades: JTokkit (Conteo de tokens de IA), Lombok (Productividad y reducción de boilerplate), SpringDoc OpenAPI (Swagger).
 
-## ARQUITECTURA DE DATOS (MODELO RELACIONAL)
-- Entidad Usuario: Long id, String nombre, String email, String password, Boolean activo. Relación: tiene muchos perfiles, autor de muchos tópicos y respuestas.
-- Entidad Perfil: Long id, PerfilNombre nombre (Enumeración: ROLE_ADMIN, ROLE_USER).
-- Entidad Curso: Long id, String nombre, String categoria, Boolean activo.
-- Entidad Topico: Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, Boolean activo (Borrado lógico / Soft Delete vía @SQLRestriction). Relaciones: Pertenece a un Curso, creado por un Usuario (autor), contiene lista de Respuestas.
-- Entidad Respuesta: Long id, String mensaje, LocalDateTime fechaCreacion, Boolean solucion, Boolean activo. Relaciones: Vinculado a un Tópico, creado por un Usuario (autor).
-- Enumeración StatusTopico: NO_RESPONDIDO, NO_SOLUCIONADO, SOLUCIONADO, CERRADO.
+4. MODELO DE DATOS Y ENTIDADES (PERSISTENCIA)
+-------------------------------------------------------------------------------
+Todas las tablas principales manejan Borrado Lógico (Soft Delete) en la base de datos MySQL mediante la bandera `activo` (Boolean) y la anotación `@SQLRestriction` de Hibernate para omitir automáticamente registros inactivos en las consultas.
 
-## FLUJO OPERATIVO Y SEGURIDAD (RBAC)
-- Autenticación: Stateless mediante Spring Security y tokens JWT cifrados usando PasswordEncoder (BCrypt).
-- Endpoint Login: POST /login (Público, devuelve el JWT Token).
-- Roles y Permisos:
-  * ROLE_ADMIN: Control total del foro, administración de usuarios, cursos, perfiles y supervisión de logs de IA.
-  * ROLE_USER: Participación en la comunidad (Crear tópicos, responder, marcar solución).
-- Swagger UI de Documentación: https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html (Permite autorizar mediante Bearer Token).
+* Entidad: Usuario
+  - Atributos: Long id, String nombre, String email, String password, Boolean activo.
+  - Relaciones: Una lista de Perfiles (`List<Perfil> perfiles`).
 
-## MODERACIÓN INTELIGENTE MULTICAPA (FAILOVER DE IA)
-Para mitigar fallos de red o límites de cuotas, el Foro Hub procesa los textos mediante tres niveles en cascada:
-1. Capa Primaria (Cloud): Google Gemini (Modelo: Gemini-3-Flash-Preview) para análisis semántico profundo y detección de insultos o spam.
-2. Capa Secundaria (Cloud - Failover): Mistral AI (Modelo: Mistral Large) que se activa automáticamente si Gemini reporta latencia o caída del servicio.
-3. Capa de Seguridad Local (Offline): Filtro Heurístico basado en código Java puro que aplica reglas de negocio, análisis de palabras clave y puntuación de riesgo si ambos proveedores de IA están caídos.
-Observabilidad: Implementation del patrón Decorator (LoggingChatModelDecorator) para capturar latencias, tokens de entrada y salida, y metadata exacta de cada llamada a las APIs de IA.
+* Entidad: Perfil
+  - Atributos: Long id, PerfilNombre nombre.
+  - Enumeración PerfilNombre: [ROLE_ADMIN, ROLE_USER]
 
-# 3. VARIABLES DE ENTORNO REQUERIDAS (PRODUCCIÓN)
-- DB_NAME=foro_hub
-- DB_USER=tu_usuario
-- DB_PASSWORD=tu_password
-- JWT_SECRET=clave_secreta_tokens
-- PROJECT_ID=id_proyecto_google_genai
-- GEMINI_APIKEY=key_de_gemini
-- MISTRAL_APIKEY=key_de_mistral
+* Entidad: Curso
+  - Atributos: Long id, String nombre, String categoria, Boolean activo.
+
+* Entidad: Topico
+  - Atributos: Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, Boolean activo.
+  - Relaciones: Muchas solicitudes pertenecen a 1 Usuario autor, muchas a 1 Curso curso, y contiene una lista de respuestas (`List<Respuesta> respuestas`).
+  - Enumeración StatusTopico: [NO_RESPONDIDO, NO_SOLUCIONADO, SOLUCIONADO, CERRADO]
+
+* Entidad: Respuesta
+  - Atributos: Long id, String mensaje, LocalDateTime fechaCreacion, Boolean solucion, Boolean activo.
+  - Relaciones: Muchas respuestas pertenecen a 1 Usuario autor, y muchas a 1 Topico topico.
+
+5. FLUJOS OPERATIVOS Y LÓGICA DE NEGOCIO
+-------------------------------------------------------------------------------
+A) Proceso de Autenticación JWT:
+   1. El cliente envía credenciales vía POST a `/login`.
+   2. El `AuthenticationManager` coordina la validación y delega en `UserDetailsService` la búsqueda del usuario vía `UsuarioRepository` en MySQL.
+   3. Se verifica el hash de la contraseña usando `PasswordEncoder` (BCrypt).
+   4. Si es correcto, el `JWTProvider` firma un token criptográfico y devuelve un HTTP 200 OK con el token String. Si falla, lanza `BadCredentialsException` y devuelve un HTTP 401 Unauthorized.
+
+B) Flujo de Creación de Tópicos y Respuestas:
+   1. El cliente envía la petición POST (`/topicos` o `/respuestas`) incluyendo el encabezado `Authorization: Bearer <JWT>`.
+   2. El servicio valida la existencia previa de IDs relacionados (autor, curso o tópico).
+   3. En el caso de listados (`GET /topicos?page=0`), se procesa de forma paginada (`Pageable`) filtrando los registros donde `activo = true` (`findByActivoTrue`).
+
+C) Regla de Negocio Estratégica para Soluciones (Marcado de Solución):
+   Cuando se marca una respuesta específica como la solución de un tópico (`RespuestaService`):
+   1. Se desmarcan automáticamente todas las otras respuestas anteriores asociadas a ese mismo tópico (seteando `solucion = false`).
+   2. Se establece el atributo `solucion = true` en la respuesta seleccionada.
+   3. El `statusTopico` del Tópico padre cambia automáticamente y de forma obligatoria al estado `SOLUCIONADO`.
+   4. Se realiza el commit de la transacción en la base de datos.
+
+6. SISTEMA DE MODERACIÓN INTELIGENTE MULTICAPA (AI FAILOVER)
+-------------------------------------------------------------------------------
+Para proteger la comunidad contra lenguaje ofensivo, spam o contenidos inapropiados en tiempo real, el sistema intercepta las solicitudes de creación antes de persistirlas en la base de datos mediante un flujo en cascada con alta disponibilidad (High Availability):
+
+- Capa Primaria (Google Gemini AI): Utiliza el modelo `Gemini-3-Flash-Preview` para análisis semántico profundo de contexto, sentimiento y sarcasmo en la nube.
+- Capa Secundaria / Failover (Mistral AI): Si la API de Gemini sufre latencia, caídas de servicio o agotamiento de cuota de tokens, el sistema conmuta automáticamente y procesa la moderación con `Mistral Large` en la nube.
+- Capa de Seguridad Local (Heurístico Local): Si no hay conectividad externa o ambas APIs fallan, entra en juego un motor local basado en Java que calcula una puntuación de riesgo usando reglas locales de palabras clave y SPAM, asegurando que la app nunca quede desprotegida.
+
+Manejo de Errores en Moderación:
+Si cualquiera de las capas dictamina que el contenido es ofensivo (`esContenidoOfensivo == true`), el sistema interrumpe el flujo, lanza de inmediato una `ValidacionException`, cancela la inserción en la base de datos y retorna un código HTTP 400 Bad Request con un mensaje controlado de bloqueo al cliente.
+
+7. OBSERVABILIDAD Y MONITOREO DE IA
+-------------------------------------------------------------------------------
+El consumo de los modelos de IA se monitorea de forma estricta mediante el patrón de diseño Decorator implementado en la clase `LoggingChatModelDecorator`. Esta clase envuelve las llamadas del modelo de chat y registra en los logs del sistema métricas de rendimiento en tiempo real:
+- Cantidad exacta de tokens consumidos en la entrada (Input Tokens - típicamente ~174 tokens incluyendo reglas).
+- Cantidad exacta de tokens consumidos en la salida (Output Tokens - típicamente ~3 tokens con el veredicto).
+- Tiempo de respuesta exacto y latencia de la llamada de API.
+- Metadata y nombre del modelo de lenguaje utilizado.
+
+8. ENDPOINTS PRINCIPALES DE LA API
+-------------------------------------------------------------------------------
+- `POST /login`            -> Autenticación de usuarios. Retorna el JWT Token. (Acceso PÚBLICO).
+- `POST /topicos`          -> Registra un nuevo tópico de discusión. (Requiere JWT).
+- `POST /respuestas`       -> Registra una respuesta asociada a un tópico (Pasa por moderación de IA). (Requiere JWT).
+- `GET /topicos`           -> Recupera el listado paginado de tópicos activos. (Requiere JWT).
+- `GET /swagger-ui.html`   -> Acceso a la documentación viva de la API. (Acceso PÚBLICO).
+
+9. ESPECIFICACIÓN DE ENDPOINTS Y ESTRUCTURA DE DTOS (REQUEST/RESPONSE)
+-------------------------------------------------------------------------------
+A) MÓDULO DE AUTENTICACIÓN
+   - POST /login
+     * Request (DatosAutenticacionUsuario): [String email, String password] -> Validado con @NotBlank.
+     * Response (DatosJWTToken): [String jsonWebToken]
+
+B) MÓDULO DE TÓPICOS
+   - POST /topicos (Requiere JWT)
+     * Request (DatosRegistroTopico): [String titulo, String mensaje, Long autorId, Long cursoId] -> @NotBlank y @NotNull.
+     * Response (DatosRespuestaTopico): [Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, String nombreAutor, String nombreCurso] -> Retorna HTTP 201 Created.
+   
+   - GET /topicos (Requiere JWT)
+     * Parámetros: ?page=0&size=10&sort=fechaCreacion,desc (Paginación nativa de Spring Data).
+     * Response: Page<DatosRespuestaTopico> (Filtra automáticamente inactivos: activo = true).
+
+   - GET /topicos/{id} (Requiere JWT)
+     * Response: DatosRespuestaTopico detallado. Si no existe o está inactivo, retorna HTTP 404 Not Found.
+
+C) MÓDULO DE RESPUESTAS
+   - POST /respuestas (Requiere JWT - Pasa por Moderación IA)
+     * Request (DatosRegistroRespuesta): [String mensaje, Long topicoId, Long autorId] -> @NotBlank y @NotNull.
+     * Response (DatosRetornoRespuesta): [Long id, String mensaje, LocalDateTime fechaCreacion, String nombreAutor, Boolean solucion] -> Retorna HTTP 201 Created.
+
+   - PUT /respuestas/{id}/solucion (Requiere JWT)
+     * Acción: Marca la respuesta como solución, desmarca las anteriores del mismo tópico y cambia el estado del tópico a SOLUCIONADO.
+     * Response: DatosRetornoRespuesta actualizado -> Retorna HTTP 200 OK.
+
+===============================================================================
+Fin del archivo de contexto de infraestructura.
+===============================================================================

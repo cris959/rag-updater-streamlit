@@ -5,45 +5,44 @@ from groq import Groq
 from duckduckgo_search import DDGS
 
 load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# Inicialización segura del cliente Groq
+api_key = os.getenv("GROQ_API_KEY")
+if not api_key:
+    raise ValueError("❌ Error: La variable de entorno GROQ_API_KEY no está configurada.")
+
+client = Groq(api_key=api_key)
 
 # DETECCIÓN DE ENTORNO
 SISTEMA_OPERATIVO = platform.system()
 print(f"🖥️ [Sistema] Entorno detectado: {SISTEMA_OPERATIVO}")
 
 # ========================================================
-# 1. CONFIGURACIÓN HÍBRIDA DE BASE DE DATOS VECTORIAL
+# 1. RECUPERACIÓN DE CONTEXTO LOCAL Y REGLAS DE NEGOCIO
 # ========================================================
 
-if SISTEMA_OPERATIVO == "Windows":
-    # --- MODO DESARROLLO (Windows - Python 3.13) ---
-    print("📂 Cargando Simulador de Base Vectorial (In-Memory)...")
-    
-    documentos_locales = [
-        {"contenido": "Para desplegar aplicaciones en OCI Always Free de Christian Dev, se usa Ubuntu con Nginx como proxy inverso."},
-        {"contenido": "El proyecto Foro Hub está alojado en foro-hub-christian.duckdns.org usando certificados SSL."}
-    ]
-
 def buscar_en_faiss_local(pregunta_usuario: str) -> str:
-   """
-   Simula la recuperación de contexto local (RAG) en desarrollo.
-   Si detecta términos críticos del negocio, inyecta las reglas de oro
-   del proyecto para evitar que el LLM delire flujos estándar.
-   """
-   pregunta_lower = pregunta_usuario.lower()
-   contexto_base = ""
-    
-    # Intentar leer el archivo de contexto real si existe
-   try:
-        with open("contexto_infraestructura.txt", "r", encoding="utf-8") as f:
-            contexto_base = f.read()
-   except FileNotFoundError:
-        contexto_base = "Contexto local no disponible."
+    """
+    Recupera el contexto de la infraestructura local desde el archivo .txt.
+    Si detecta términos críticos del negocio, inyecta dinámicamente las 
+    reglas de oro del proyecto Foro Hub para mitigar alucinaciones.
+    """
+    pregunta_lower = pregunta_usuario.lower()
+    contexto_base = ""
+    ruta_archivo = "contexto_infraestructura.txt"
+     
+    try:
+        if os.path.exists(ruta_archivo):
+            with open(ruta_archivo, "r", encoding="utf-8") as f:
+                contexto_base = f.read()
+        else:
+            contexto_base = "⚠️ Contexto local (contexto_infraestructura.txt) no disponible físicamente."
+    except Exception as e:
+        contexto_base = f"Error al leer la base de conocimiento local: {str(e)}"
 
-    # INYECTOR PRIORITARIO: Reglas duras para la IA
-   reglas_estrictas = ""
-    
-   if any(k in pregunta_lower for k in ["solucion", "marcar", "status", "estado", "topico"]):
+    # INYECTOR PRIORITARIO: Reglas duras de lógica para el dominio del negocio
+    reglas_estrictas = ""
+    if any(k in pregunta_lower for k in ["solucion", "marcar", "status", "estado", "topico", "tópico"]):
         reglas_estrictas = (
             "\n[¡ALERTA REGLA DE NEGOCIO REAL DEL PROYECTO FORO HUB!]\n"
             "- Los únicos estados válidos de StatusTopico son: NO_RESPONDIDO, NO_SOLUCIONADO, SOLUCIONADO, CERRADO.\n"
@@ -52,14 +51,16 @@ def buscar_en_faiss_local(pregunta_usuario: str) -> str:
             "marcando la nueva (solucion=true) y mutando el StatusTopico del padre a SOLUCIONADO.\n"
             "- Prohibido inventar flujos de envío de emails o indicadores de rendimiento si no están explícitos."
         )
-   return f"{contexto_base}\n{reglas_estrictas}"
+        
+    return f"{contexto_base}\n{reglas_estrictas}".strip()
 
 # ========================================================
-# 2. BÚSQUEDA EN INTERNET REAL
+# 2. BÚSQUEDA EN INTERNET REAL (PRODUCCIÓN / NOVEDADES)
 # ========================================================
+
 def buscar_en_internet_real(query: str) -> str:
-    """Busca en internet en tiempo real usando DuckDuckGo (Adaptable a v5 y v6)."""
-    print(f"   🌐 Conectando con la Web para buscar: '{query}'...")
+    """Busca en internet en tiempo real usando DuckDuckGo."""
+    print(f"    🌐 Conectando con la Web para buscar: '{query}'...")
     try:
         with DDGS() as ddgs:
             resultados = [r for r in ddgs.text(query, max_results=3)]
@@ -73,13 +74,14 @@ def buscar_en_internet_real(query: str) -> str:
         return f"Error al consultar internet: {str(e)}"
     
 # ========================================================
-# 3. FUNCIÓN PRINCIPAL CORREGIDA: EVITAR ALUCINACIONES TEÓRICAS
+# 3. MOTOR PRINCIPAL: EJECUTAR AGENT LOOP (LLAMA 3.3 70B)
 # ========================================================
+
 def ejecutar_agent_loop(pregunta_usuario: str) -> str:
     """
-    Orquesta el flujo agéntico llamando a las herramientas dinámicas.
-    Tiene reglas estrictas para evitar alucinaciones teóricas y responder
-    como un DevOps/Backend Senior pragmático.
+    Orquesta el flujo agéntico híbrido. Si las condiciones no fuerzan
+    herramientas, recupera el contexto local de manera preventiva 
+    para asegurar que el prompt del sistema esté respaldado por tu entorno.
     """
     print(f"\n🤖 [Agente] Iniciando análisis para: '{pregunta_usuario}'")
     
@@ -87,23 +89,29 @@ def ejecutar_agent_loop(pregunta_usuario: str) -> str:
     contexto_web = ""
     pregunta_lower = pregunta_usuario.lower()
     
-    # Ampliamos palabras clave para capturar rutas, swagger, api y endpoints en el contexto local
+    # Palabras clave expandidas para mapear infraestructura y flujos
     palabras_clave_local = [
         "nginx", "puerto", "ubuntu", "local", "servidor", "foro", 
-        "inventario", "faiss", "ruta", "endpoint", "swagger", "api", "extension"
+        "inventario", "faiss", "ruta", "endpoint", "swagger", "api", "extension",
+        "solucion", "status", "estado", "topico", "tópico"
     ]
     
+    # 1. Recuperación condicional de herramientas
     if any(k in pregunta_lower for k in palabras_clave_local):
         contexto_local = buscar_en_faiss_local(pregunta_usuario)
         
-    if any(k in pregunta_lower for k in ["seguridad", "internet", "ia", "web", "últimas", "recomendaciones", "actualidad"]):
+    if any(k in pregunta_lower for k in ["seguridad", "internet", "ia", "web", "últimas", "actualidad", "rag"]):
         contexto_web = buscar_en_internet_real(pregunta_usuario)
+        
+    # 2. Respaldo de seguridad: si no disparó flags pero pregunta algo del entorno, cargamos local por defecto
+    if not contexto_local and not contexto_web:
+        contexto_local = buscar_en_faiss_local(pregunta_usuario)
         
     contexto_total = f"{contexto_local}\n\n{contexto_web}".strip()
     if not contexto_total:
-        contexto_total = "No se requirieron herramientas externas para esta consulta."
+        contexto_total = "No se requirieron herramientas externas adicionales para esta consulta."
 
-    # SYSTEM PROMPT AJUSTADO PARA CORREGIR ALUCINACIONES
+    # 3. System Prompt adaptativo anti-alucinaciones teóricas
     system_prompt = (
         "Sos un Ingeniero DevOps y Desarrollador Backend Senior experto en Java, Spring Boot, Nginx y Oracle Cloud (OCI).\n"
         "El usuario es Christian Dev (Cris959), creador del proyecto Foro Hub.\n\n"
@@ -114,6 +122,7 @@ def ejecutar_agent_loop(pregunta_usuario: str) -> str:
         "4. Vinculá tus respuestas al contexto real de Foro Hub: ruteo hacia el backend, configuración de Spring Security (público vs protegido) o cómo el proxy inverso de Nginx maneja esas rutas."
     )
     
+    # 4. Invocación al modelo en Groq
     try:
         chat_completion = client.chat.completions.create(
             messages=[
@@ -121,7 +130,7 @@ def ejecutar_agent_loop(pregunta_usuario: str) -> str:
                 {"role": "user", "content": f"Contexto disponible:\n{contexto_total}\n\nConsulta: {pregunta_usuario}"}
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0.3, # Bajamos un toque la temperatura (estaba en 0.5) para que sea más preciso y menos creativo
+            temperature=0.3,  # Baja creatividad, alta precisión técnica
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
