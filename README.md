@@ -22,7 +22,7 @@ El agente está entrenado para dar soporte sobre la siguiente arquitectura de in
 
 * Cifrado: Certificados SSL administrados y renovados mediante Let's Encrypt y Certbot.
 
-* Dominio Público: [https://foro-hub-christian.duckdns.org/api/swagger-ui/html](https://foro-hub-christian.duckdns.org/api/swagger-ui/html).
+* Dominio Público: [https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html](https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html).
 
 * Backend Relacionado: API REST desarrollada con Spring Boot 3.x y Java 21.
 
