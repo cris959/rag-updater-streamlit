@@ -1,134 +1,206 @@
-===============================================================================
-CONTEXTO DE LA APLICACIÓN: FORO HUB (API REST)
-===============================================================================
+================================================================================
+           CONTEXTO DE INFRAESTRUCTURA Y SISTEMA - FORO HUB (2026)
+================================================================================
 
-1. DESCRIPCIÓN GENERAL DEL PROYECTO
--------------------------------------------------------------------------------
-Foro Hub es una API REST robusta para la gestión de comunidades digitales desarrollada con Java y Spring Boot 3.x. Su núcleo incluye un sistema de autenticación avanzada, borrado lógico de datos y una arquitectura de moderación híbrida y resiliente basada en Inteligencia Artificial (Google Gemini y Mistral AI) en conjunto con filtros heurísticos locales.
+Foro Hub es una solución backend API REST robusta para la gestión de comunidades digitales, desarrollada con Java y Spring Boot 3.x como parte del desafío de formación en el programa Alura/Oracle Next Education. El proyecto no solo replica el funcionamiento de un foro tradicional, sino que eleva el estándar mediante la implementación de seguridad avanzada, validación de contenidos con Inteligencia Artificial y persistencia corporativa en la nube.
 
-2. ARQUITECTURA DE INFRAESTRUCTURA Y DESPLIEGUE
--------------------------------------------------------------------------------
-- Entorno de Desarrollo y Producción: Christian Dev (Desarrollador: Christian / Cris959).
-- Servidor Web / Proxy Inverso: Nginx corriendo sobre una instancia Ubuntu Server en Oracle Cloud Infrastructure (OCI) - Región Ashburn (Siempre Gratis / Always Free).
-- Puerto de Escucha Nginx: Escucha en el puerto 8000 para tráfico externo.
-- Redirección (Proxy Pass): Redirige las solicitudes entrantes hacia el backend de Spring Boot que expone la API.
-- Seguridad de Red: Administrado con certificados SSL válidos y renovados automáticamente mediante Let's Encrypt y Certbot.
-- Dominio Público Oficial: https://foro-hub-christian.duckdns.org
-- Documentación Interactiva: https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html (Swagger/SpringDoc OpenAPI).
-- Acceso SSH al Servidor: ssh -i C:\Desarrollo\oracle_key.key ubuntu@159.112.143.193
-- Automatización: Controlado en Ubuntu por scripts de Bash:
-  * `./start_forohub.sh`: Limpia puertos, asegura la DB, reinicia el servicio y verifica conexión con las APIs de IA.
-  * `./stop_forohub.sh`: Detiene los servicios de forma segura.
-  * Monitoreo de logs: `sudo journalctl -u forohub -f`
-  * Reinicio: `sudo systemctl restart forohub`
+--------------------------------------------------------------------------------
+1. EL DESAFÍO Y DIFERENCIADORES TECNOLÓGICOS
+--------------------------------------------------------------------------------
 
-3. STACK TECNOLÓGICO Y DEPENDENCIAS (MAVEN)
--------------------------------------------------------------------------------
-- Framework Base: Spring Boot 3.x
-- Seguridad: Spring Security con Autenticación Stateless basada en Tokens JWT (vía biblioteca JJWT).
-- Persistencia de Datos: MySQL Connector, Spring Data JPA, Hibernate.
-- Inteligencia Artificial: Spring AI Gemini (Google GenAI) y Spring AI Mistral (Mistral AI).
-- Utilidades: JTokkit (Conteo de tokens de IA), Lombok (Productividad y reducción de boilerplate), SpringDoc OpenAPI (Swagger).
+El Desafío:
+    El objetivo principal fue construir una API escalable que gestionara tópicos de discusión, respuestas y perfiles de usuario, garantizando la integridad de los datos y una experiencia de usuario segura, fluida y eficiente.
 
-4. MODELO DE DATOS Y ENTIDADES (PERSISTENCIA)
--------------------------------------------------------------------------------
-Todas las tablas principales manejan Borrado Lógico (Soft Delete) en la base de datos MySQL mediante la bandera `activo` (Boolean) y la anotación `@SQLRestriction` de Hibernate para omitir automáticamente registros inactivos en las consultas.
+Diferenciadores Tecnológicos:
+    *   Seguridad de Grado Industrial:
+        Implementación de Spring Security con autenticación JWT (Stateless), asegurando que cada interacción esté protegida y vinculada a roles específicos (ADMIN/USER).
+    *   Moderación con Inteligencia Artificial Híbrida:
+        Integración de modelos de lenguaje natural en tiempo real (Google Gemini y Mistral AI) en conjunto con filtros heurísticos locales para interceptar y bloquear contenidos ofensivos antes de que impacten la base de datos.
+    *   Resiliencia de Datos (Soft Delete):
+        Uso de Borrado Lógico mediante la bandera 'activo' (Boolean) y la anotación de Hibernate (@SQLRestriction), lo que permite omitir automáticamente registros inactivos en las consultas y mantener la trazabilidad sin pérdida física de registros.
+    *   Observabilidad Avanzada:
+        Monitoreo detallado del consumo de las APIs de IA (tokens y latencia exacta) mediante el patrón de diseño Decorator, permitiendo un control analítico sobre el rendimiento y los costos de operación.
+    *   Diseño de Código Limpio (SOLID):
+        Arquitectura basada en principios de diseño limpio, utilizando DTOs para la transferencia segura de datos y una estricta separación de responsabilidades entre controladores, servicios y repositorios.
 
-* Entidad: Usuario
-  - Atributos: Long id, String nombre, String email, String password, Boolean activo.
-  - Relaciones: Una lista de Perfiles (`List<Perfil> perfiles`).
+--------------------------------------------------------------------------------
+2. STACK TECNOLÓGICO Y RECURSOS UTILIZADOS (MAVEN)
+--------------------------------------------------------------------------------
 
-* Entidad: Perfil
-  - Atributos: Long id, PerfilNombre nombre.
-  - Enumeración PerfilNombre: [ROLE_ADMIN, ROLE_USER]
+Dependencia / Herramienta:
+    *   Spring Boot 3.x (Framework Base del ecosistema)
+    *   Spring Security (Autenticación robusta y control de acceso basado en roles - RBAC)
+    *   Spring AI Gemini (Integración nativa con Google GenAI)
+    *   Spring AI Mistral (Integración nativa con Mistral AI)
+    *   Spring Data JPA / Hibernate (Capa de abstracción y persistencia)
+    *   Oracle JDBC Driver (Conector oficial para base de datos empresarial)
+    *   JJWT (Biblioteca para creación, firma y validación de Tokens JWT)
+    *   JTokkit (Biblioteca para el conteo exacto de tokens de IA en lenguaje natural)
+    *   Lombok (Productividad del desarrollador mediante la reducción de boilerplate)
+    *   SpringDoc OpenAPI / Swagger UI (Generación de documentación viva de la API)
 
-* Entidad: Curso
-  - Atributos: Long id, String nombre, String categoria, Boolean activo.
+--------------------------------------------------------------------------------
+3. MODELO DE DATOS Y ENTIDADES (PERSISTENCIA)
+--------------------------------------------------------------------------------
 
-* Entidad: Topico
-  - Atributos: Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, Boolean activo.
-  - Relaciones: Muchas solicitudes pertenecen a 1 Usuario autor, muchas a 1 Curso curso, y contiene una lista de respuestas (`List<Respuesta> respuestas`).
-  - Enumeración StatusTopico: [NO_RESPONDIDO, NO_SOLUCIONADO, SOLUCIONADO, CERRADO]
+Todas las entidades manejan Borrado Lógico mediante la propiedad 'activo' y la directiva '@SQLRestriction'.
 
-* Entidad: Respuesta
-  - Atributos: Long id, String mensaje, LocalDateTime fechaCreacion, Boolean solucion, Boolean activo.
-  - Relaciones: Muchas respuestas pertenecen a 1 Usuario autor, y muchas a 1 Topico topico.
+Entidades Estructurales:
+    *   Usuario:
+        - Atributos: Long id, String nombre, String email, String password, Boolean activo.
+        - Relaciones: Una lista de perfiles asociados (List<Perfil> perfiles).
+    *   Perfil:
+        - Atributos: Long id, PerfilNombre nombre.
+        - Enumeración PerfilNombre: [ROLE_ADMIN, ROLE_USER]
+    *   Curso:
+        - Atributos: Long id, String nombre, String categoria, Boolean activo.
+    *   Topico:
+        - Atributos: Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, Boolean activo.
+        - Relaciones: Pertenece a 1 Usuario (autor), pertenece a 1 Curso (curso), y contiene una lista de aportes (List<Respuesta> respuestas).
+        - Enumeración StatusTopico: [NO_RESPONDIDO, NO_SOLUCIONADO, SOLUCIONADO, CERRADO]
+    *   Respuesta:
+        - Atributos: Long id, String mensaje, LocalDateTime fechaCreacion, Boolean solucion, Boolean activo.
+        - Relaciones: Vinculada de forma obligatoria a 1 Usuario (autor) y a 1 Topico (tópico padre).
 
-5. FLUJOS OPERATIVOS Y LÓGICA DE NEGOCIO
--------------------------------------------------------------------------------
-A) Proceso de Autenticación JWT:
-   1. El cliente envía credenciales vía POST a `/login`.
-   2. El `AuthenticationManager` coordina la validación y delega en `UserDetailsService` la búsqueda del usuario vía `UsuarioRepository` en MySQL.
-   3. Se verifica el hash de la contraseña usando `PasswordEncoder` (BCrypt).
-   4. Si es correcto, el `JWTProvider` firma un token criptográfico y devuelve un HTTP 200 OK con el token String. Si falla, lanza `BadCredentialsException` y devuelve un HTTP 401 Unauthorized.
+Relaciones del Ecosistema:
+    *   Un Usuario posee 1 o muchos Perfiles.
+    *   Un Usuario puede autorizar de 0 a muchos Tópicos o Respuestas.
+    *   Un Tópico pertenece estrictamente a 1 Curso.
+    *   Un Tópico aloja de 0 a muchas Respuestas en su hilo de discusión.
 
-B) Flujo de Creación de Tópicos y Respuestas:
-   1. El cliente envía la petición POST (`/topicos` o `/respuestas`) incluyendo el encabezado `Authorization: Bearer <JWT>`.
-   2. El servicio valida la existencia previa de IDs relacionados (autor, curso o tópico).
-   3. En el caso de listados (`GET /topicos?page=0`), se procesa de forma paginada (`Pageable`) filtrando los registros donde `activo = true` (`findByActivoTrue`).
+--------------------------------------------------------------------------------
+4. FLUJOS OPERATIVOS Y LÓGICA DE NEGOCIO
+--------------------------------------------------------------------------------
+
+A) Proceso de Autenticación JWT (Stateless):
+    1. El cliente envía sus credenciales en formato JSON vía POST al endpoint '/login'.
+    2. El 'AuthenticationManager' coordina la solicitud y delega en 'UserDetailsService' la búsqueda del registro a través de 'UsuarioRepository'.
+    3. Se valida el texto plano de la contraseña contra el hash almacenado mediante 'PasswordEncoder' (BCrypt).
+    4. En caso de éxito, el 'JWTProvider' firma digitalmente un token criptográfico y retorna un HTTP 200 OK con el token estructurado. Si falla, se lanza una 'BadCredentialsException' devolviendo un HTTP 401 Unauthorized.
+
+B) Flujo de Creación y Consulta de Tópicos:
+    1. El cliente inicia una petición POST ('/topicos' o '/respuestas') adjuntando en la cabecera el parámetro 'Authorization: Bearer <JWT>'.
+    2. El servicio correspondiente verifica de forma explícita la existencia previa de los IDs vinculados (autor, curso o tópico).
+    3. Para solicitudes de listados globales ('GET /topicos?page=0'), el backend procesa los datos de forma paginada ('Pageable') invocando métodos de filtrado activo como 'findByActivoTrue()' para restringir registros ocultos.
 
 C) Regla de Negocio Estratégica para Soluciones (Marcado de Solución):
-   Cuando se marca una respuesta específica como la solución de un tópico (`RespuestaService`):
-   1. Se desmarcan automáticamente todas las otras respuestas anteriores asociadas a ese mismo tópico (seteando `solucion = false`).
-   2. Se establece el atributo `solucion = true` en la respuesta seleccionada.
-   3. El `statusTopico` del Tópico padre cambia automáticamente y de forma obligatoria al estado `SOLUCIONADO`.
-   4. Se realiza el commit de la transacción en la base de datos.
+    Cuando una respuesta es seleccionada y marcada como la solución definitiva de un hilo de discusión a través de 'RespuestaService', se ejecuta de forma atómica:
+    1. Se desmarcan de manera automática todas las respuestas previas ligadas a ese mismo tópico específico (forzando su estado a 'solucion = false').
+    2. Se sobrescribe el atributo a 'solucion = true' exclusivamente en la entidad de respuesta seleccionada.
+    3. El parámetro 'statusTopico' del Tópico padre se actualiza obligatoriamente al estado transaccional 'SOLUCIONADO'.
+    4. El gestor de persistencia realiza el commit definitivo de la transacción en la base de datos.
 
-6. SISTEMA DE MODERACIÓN INTELIGENTE MULTICAPA (AI FAILOVER)
--------------------------------------------------------------------------------
-Para proteger la comunidad contra lenguaje ofensivo, spam o contenidos inapropiados en tiempo real, el sistema intercepta las solicitudes de creación antes de persistirlas en la base de datos mediante un flujo en cascada con alta disponibilidad (High Availability):
+--------------------------------------------------------------------------------
+5. SISTEMA DE MODERACIÓN INTELIGENTE MULTICAPA (AI FAILOVER)
+--------------------------------------------------------------------------------
 
-- Capa Primaria (Google Gemini AI): Utiliza el modelo `Gemini-3-Flash-Preview` para análisis semántico profundo de contexto, sentimiento y sarcasmo en la nube.
-- Capa Secundaria / Failover (Mistral AI): Si la API de Gemini sufre latencia, caídas de servicio o agotamiento de cuota de tokens, el sistema conmuta automáticamente y procesa la moderación con `Mistral Large` en la nube.
-- Capa de Seguridad Local (Heurístico Local): Si no hay conectividad externa o ambas APIs fallan, entra en juego un motor local basado en Java que calcula una puntuación de riesgo usando reglas locales de palabras clave y SPAM, asegurando que la app nunca quede desprotegida.
+Para salvaguardar la integridad de la comunidad ante interacciones ofensivas o spam, el sistema intercepta las solicitudes de creación mediante un pipeline en cascada con alta disponibilidad (High Availability):
+
+Capas de Decision:
+    *   Capa Primaria (Cloud Google Gemini):
+        Utiliza el modelo 'Gemini-3-Flash-Preview' en la nube para procesar análisis semánticos complejos, evaluaciones de contexto, sentimiento y detección de sarcasmo.
+    *   Capa Secundaria / Failover (Cloud Mistral AI):
+        Si la API de Gemini experimenta caídas, latencia excesiva o cuotas de tokens agotadas, el sistema conmuta en milisegundos hacia la API de 'Mistral Large' para dar continuidad al proceso.
+    *   Capa de Seguridad Local (Heurístico Offline):
+        Si la infraestructura pierde conectividad externa o ambos proveedores de IA fallan, se activa un motor de respaldo nativo en Java que calcula una puntuación de riesgo determinista utilizando diccionarios de palabras clave y métricas de SPAM locales.
 
 Manejo de Errores en Moderación:
-Si cualquiera de las capas dictamina que el contenido es ofensivo (`esContenidoOfensivo == true`), el sistema interrumpe el flujo, lanza de inmediato una `ValidacionException`, cancela la inserción en la base de datos y retorna un código HTTP 400 Bad Request con un mensaje controlado de bloqueo al cliente.
+    Si cualquiera de las capas de control determina una vulneración ('esContenidoOfensivo == true'), el sistema aborta la operación, lanza inmediatamente una 'ValidacionException', revierte cualquier inserción en base de datos (rollback) y retorna un código de respuesta HTTP 400 Bad Request acompañado de un mensaje controlado de bloqueo.
 
-7. OBSERVABILIDAD Y MONITOREO DE IA
--------------------------------------------------------------------------------
-El consumo de los modelos de IA se monitorea de forma estricta mediante el patrón de diseño Decorator implementado en la clase `LoggingChatModelDecorator`. Esta clase envuelve las llamadas del modelo de chat y registra en los logs del sistema métricas de rendimiento en tiempo real:
-- Cantidad exacta de tokens consumidos en la entrada (Input Tokens - típicamente ~174 tokens incluyendo reglas).
-- Cantidad exacta de tokens consumidos en la salida (Output Tokens - típicamente ~3 tokens con el veredicto).
-- Tiempo de respuesta exacto y latencia de la llamada de API.
-- Metadata y nombre del modelo de lenguaje utilizado.
+--------------------------------------------------------------------------------
+6. OBSERVABILIDAD Y MONITOREO DE IA
+--------------------------------------------------------------------------------
 
-8. ENDPOINTS PRINCIPALES DE LA API
--------------------------------------------------------------------------------
-- `POST /login`            -> Autenticación de usuarios. Retorna el JWT Token. (Acceso PÚBLICO).
-- `POST /topicos`          -> Registra un nuevo tópico de discusión. (Requiere JWT).
-- `POST /respuestas`       -> Registra una respuesta asociada a un tópico (Pasa por moderación de IA). (Requiere JWT).
-- `GET /topicos`           -> Recupera el listado paginado de tópicos activos. (Requiere JWT).
-- `GET /swagger-ui.html`   -> Acceso a la documentación viva de la API. (Acceso PÚBLICO).
+El consumo de los modelos de IA se fiscaliza rigurosamente mediante el patrón de diseño Decorator implementado en la clase 'LoggingChatModelDecorator'. Este componente envuelve el cliente de chat registrando métricas directo en los logs de la infraestructura:
+    *   Nombre y metadatos del modelo de lenguaje en ejecución.
+    *   Cantidad exacta de tokens de entrada (Input Tokens): Típicamente ~174 tokens que integran el cuerpo del mensaje y el prompt con las reglas de moderación.
+    *   Cantidad exacta de tokens de salida (Output Tokens): Típicamente ~3 tokens conteniendo la estructura del veredicto final (APROBADO/RECHAZADO).
+    *   Tiempo de respuesta exacto y latencia de la petición HTTP externa.
 
-9. ESPECIFICACIÓN DE ENDPOINTS Y ESTRUCTURA DE DTOS (REQUEST/RESPONSE)
--------------------------------------------------------------------------------
-A) MÓDULO DE AUTENTICACIÓN
-   - POST /login
-     * Request (DatosAutenticacionUsuario): [String email, String password] -> Validado con @NotBlank.
-     * Response (DatosJWTToken): [String jsonWebToken]
+--------------------------------------------------------------------------------
+7. ENTORNO DE INFRAESTRUCTURA Y DESPLIEGUE CLOUD
+--------------------------------------------------------------------------------
 
-B) MÓDULO DE TÓPICOS
-   - POST /topicos (Requiere JWT)
-     * Request (DatosRegistroTopico): [String titulo, String mensaje, Long autorId, Long cursoId] -> @NotBlank y @NotNull.
-     * Response (DatosRespuestaTopico): [Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, String nombreAutor, String nombreCurso] -> Retorna HTTP 201 Created.
-   
-   - GET /topicos (Requiere JWT)
-     * Parámetros: ?page=0&size=10&sort=fechaCreacion,desc (Paginación nativa de Spring Data).
-     * Response: Page<DatosRespuestaTopico> (Filtra automáticamente inactivos: activo = true).
+Entorno de Desarrollo y Producción:
+    *   Identificador: Christian Dev (Desarrollador: Christian / Cris959).
+    *   Proveedor Nube: Oracle Cloud Infrastructure (OCI) - Región Ashburn (Siempre Gratis / Always Free).
+    *   Sistema Operativo Host: Ubuntu Server accesible de forma directa en la IP pública `159.112.143.193`.
+    *   Servidor Web Base: Nginx configurado como proxy inverso escuchando tráfico externo en el puerto público `8000`.
+    *   Redirección Interna (Proxy Pass): Desvía las peticiones entrantes de forma directa hacia el puerto local donde corre la instancia de Spring Boot.
+    *   Seguridad de Tráfico (Cifrado TLS): Certificados SSL válidos instalados y renovados de forma automática mediante las herramientas de Let's Encrypt y Certbot.
+    *   Dominio Público Oficial: `https://foro-hub-christian.duckdns.org`
+    *   Documentación Interactiva: `https://foro-hub-christian.duckdns.org/api/swagger-ui/index.html` (Swagger/SpringDoc OpenAPI).
 
-   - GET /topicos/{id} (Requiere JWT)
-     * Response: DatosRespuestaTopico detallado. Si no existe o está inactivo, retorna HTTP 404 Not Found.
+Persistencia Avanzada de Datos (Oracle Database):
+    *   Motor de BD: Oracle Cloud Database (23ai/26ai) de alta disponibilidad utilizando el servicio '@forohubdb_high'.
+    *   Seguridad de Conexión: Credenciales y llaves de acceso cifradas mediante el uso de Oracle Wallet integrado de manera portátil con el entorno:
+        
+        spring.datasource.url=jdbc:oracle:thin:@forohubdb_high?TNS_ADMIN=${TNS_ADMIN_PATH}
+        spring.datasource.username=ADMIN
+        spring.datasource.password=${DB_PASSWORD}
+        spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
 
-C) MÓDULO DE RESPUESTAS
-   - POST /respuestas (Requiere JWT - Pasa por Moderación IA)
-     * Request (DatosRegistroRespuesta): [String mensaje, Long topicoId, Long autorId] -> @NotBlank y @NotNull.
-     * Response (DatosRetornoRespuesta): [Long id, String mensaje, LocalDateTime fechaCreacion, String nombreAutor, Boolean solucion] -> Retorna HTTP 201 Created.
+    *   Nota de Portabilidad: La propiedad 'TNS_ADMIN_PATH' apunta de forma dinámica a "src/main/resources/oracle_wallet" utilizando '${user.dir}' para permitir la ejecución directa en cualquier máquina de desarrollo.
 
-   - PUT /respuestas/{id}/solucion (Requiere JWT)
-     * Acción: Marca la respuesta como solución, desmarca las anteriores del mismo tópico y cambia el estado del tópico a SOLUCIONADO.
-     * Response: DatosRetornoRespuesta actualizado -> Retorna HTTP 200 OK.
+Variables de Entorno Requeridas en el Sistema:
+    *   TNS_ADMIN_PATH, DB_PASSWORD, JWT_SECRET, PROJECT_ID, GEMINI_APIKEY, MISTRAL_APIKEY.
 
-===============================================================================
-Fin del archivo de contexto de infraestructura.
-===============================================================================
+--------------------------------------------------------------------------------
+8. ESPECIFICACIÓN DE ENDPOINTS Y ESTRUCTURA DE DTOS
+--------------------------------------------------------------------------------
+
+A) Módulo de Autenticación:
+    *   `POST /login` -> Acceso PÚBLICO. Autentica identidades y genera la firma del token.
+        - Request (DatosAutenticacionUsuario): [String email, String password] -> Campos validados con @NotBlank.
+        - Response (DatosJWTToken): [String jsonWebToken] -> Estado HTTP 200 OK.
+
+B) Módulo de Tópicos:
+    *   `POST /topicos` -> Requiere JWT. Registra un nuevo hilo de discusión (Retorna HTTP 201 Created).
+        - Request (DatosRegistroTopico): [String titulo, String mensaje, Long autorId, Long cursoId] -> Validados con @NotBlank y @NotNull.
+        - Response (DatosRespuestaTopico): [Long id, String titulo, String mensaje, LocalDateTime fechaCreacion, StatusTopico statusTopico, String nombreAutor, String nombreCurso]
+    *   `GET /topicos` -> Requiere JWT. Recupera un listado global paginado.
+        - Parámetros nativos de ordenamiento: `?page=0&size=10&sort=fechaCreacion,desc`
+        - Response: Page<DatosRespuestaTopico> (Excluye automáticamente registros inactivos).
+    *   `GET /topicos/{id}` -> Requiere JWT. Detalle de un registro único.
+        - Response: DatosRespuestaTopico estructurado. Si el ID no existe o su estado 'activo' es falso, retorna un HTTP 404 Not Found.
+
+C) Módulo de Respuestas:
+    *   `POST /respuestas` -> Requiere JWT. Evalúa el mensaje mediante el flujo de IA antes de persistir (Retorna HTTP 201 Created).
+        - Request (DatosRegistroRespuesta): [String mensaje, Long topicoId, Long autorId] -> Validados con @NotBlank y @NotNull.
+        - Response (DatosRetornoRespuesta): [Long id, String mensaje, LocalDateTime fechaCreacion, String nombreAutor, Boolean solucion]
+    *   `PUT /respuestas/{id}/solucion` -> Requiere JWT. Modifica el estado del aporte para resolver el debate (Retorna HTTP 200 OK).
+        - Acción: Ejecuta la regla de negocio para fijar la solución, limpiar registros anteriores del hilo y actualizar el tópico padre a SOLUCIONADO.
+        - Response: DatosRetornoRespuesta con propiedades actualizadas.
+
+--------------------------------------------------------------------------------
+9. COMANDOS ÚTILES Y AUTOMATIZACIÓN (UBUNTU SERVER)
+--------------------------------------------------------------------------------
+
+Control de Procesos mediante Scripts de Bash:
+    *   `./start_forohub.sh` -> Libera sockets bloqueados, valida el estado de las credenciales de la DB y de las APIs de IA, e inicia la ejecución limpia del JAR del backend.
+    *   `./stop_forohub.sh` -> Realiza una detención segura y controlada (Graceful Shutdown) del servicio activo.
+
+Herramientas del Sistema:
+    *   Inspección de logs de Spring Boot e IA en tiempo real:
+        $ sudo journalctl -u forohub -f
+    *   Reinicio manual del servicio del sistema:
+        $ sudo systemctl restart forohub
+
+Acceso Seguro vía Consola:
+    $ ssh -i C:\Desarrollo\oracle_key.key ubuntu@159.112.143.193
+
+--------------------------------------------------------------------------------
+10. CONTROL DE CAMBIOS Y COLABORACIONES (GIT)
+--------------------------------------------------------------------------------
+
+Flujo de Trabajo Recomendado:
+    1. Fork del proyecto: `https://github.com/cris959/foro-hub.git`
+    2. Ramificación de tareas: `git checkout -b feature-nueva`
+    3. Commits bajo convenciones claras: `git commit -m 'feat(seguridad): mensaje'`
+    4. Carga remota: `git push origin feature-nueva`
+    5. Apertura de Pull Request en la plataforma principal.
+
+Autoría y Términos Legales:
+    *   Creado por Christian (Cris959) / Alias Profesional: Christian Dev.
+    *   Proyecto protegido bajo los términos de la Licencia MIT.
+================================================================================
