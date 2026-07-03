@@ -65,3 +65,11 @@ contexto_infraestructura.txt
 
 # Permitir explícitamente el contexto del agente
 !contexto_infraestructura.txt
+
+# Ignorar base de datos vectorial local y archivos de datos
+data/
+*.faiss
+*.pkl
+
+# Permitir explícitamente que se suba el ejemplo
+!data_ejemplo/

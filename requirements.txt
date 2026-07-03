@@ -1,9 +1,22 @@
-# Core Backend & IA
-groq==0.11.0
+# --- Core Backend & IA ---
+groq>=0.30.0,<1.0.0
 python-dotenv==1.0.1
 
-# Herramientas de Búsqueda (Internet sin Rust)
+# --- Conectores Multi-Proveedor ---
+langchain-groq>=0.1.3
+langchain-google-genai>=1.0.6
+langchain-mistralai>=0.1.7
+
+# --- Ecosistema LangChain ---
+langchain-core>=0.2.9
+langchain-community>=0.2.5
+langchain-text-splitters>=0.2.0
+
+# --- Base de Datos Vectorial ---
+faiss-cpu>=1.9.0.post1
+
+# --- Herramientas de Búsqueda ---
 duckduckgo-search==5.3.1.b1
 
-# Frontend Interactivo
+# --- Frontend Interactivo ---
 streamlit==1.36.0
