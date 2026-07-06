@@ -184,6 +184,32 @@ ___
 *   **Base de Datos de Transición (Mock/Local DB):** Configuramos una base de datos ficticia/local estructurada para simular el almacenamiento de credenciales, logs e historial de consultas. Este diseño desacoplado nos permite validar la lógica de los agentes y el comportamiento del backend localmente, garantizando una migración limpia y sin fricciones antes de conectar los servicios productivos una vez que subamos la aplicación a la infraestructura de **Oracle Cloud Infrastructure (OCI)**
 ___
 
+## 🚀 Despliegue y Optimización (Entorno Dockerizado)
+
+El Panel de Control Multi-Agente ha sido completamente contenedorizado utilizando **Docker** y **Docker Compose**, lo que garantiza un entorno de producción aislado, ligero y replicable, ideal para el despliegue en instancias "Always Free" de Oracle Cloud Infrastructure (OCI).
+
+### 🛠️ Mejoras e Infraestructura Recientes
+
+* **Optimización de Dependencias:** Se reestructuró el archivo `requirements-prod.txt` para solucionar conflictos de dependencias cruzadas con el ecosistema de LangChain (`ResolutionImpossible`). Además, se fijó una versión estable del conector de búsquedas (`duckduckgo-search`) libre de compiladores nativos de Rust (`cargo`/`maturin`), reduciendo drásticamente el peso y el tiempo de construcción de la imagen Docker.
+* **Seguridad Avanzada (Honeypot Anti-Bots):** Se integró una trampa nativa invisible (`email_confirm`) para interceptar y bloquear scripts automatizados. El sistema de ocultamiento visual se corrigió quirúrgicamente mediante selectores avanzados de CSS (`:has(...)`) adaptados a la renderización reactiva de las versiones más recientes de Streamlit, garantizando la protección sin romper la interfaz de usuario.
+* **Interfaz Bilingüe:** Se rediseñó el componente global de entrada de datos (`st.chat_input`), ofreciendo una experiencia de usuario (UX) más intuitiva que explicita el soporte nativo de procesamiento técnico tanto en **Español** como en **Inglés**.
+
+## 🐳 Comandos de Gestión del Contenedor
+
+Para levantar el entorno con las últimas optimizaciones de dependencias e interfaz, ejecutar en la raíz del proyecto:
+
+```
+bash
+# Construir la imagen desde cero y levantar los servicios
+docker compose up --build
+
+# Levantar el contenedor en segundo plano (Modo producción)
+docker compose up -d
+
+# Detener los servicios por completo
+docker compose down
+```
+
 
 ## 🤝 ¿Cómo colaborar en el proyecto?
 ¡Toda ayuda para optimizar los agentes o mejorar el RAG es bienvenida! Para contribuir, sigue este flujo de trabajo estándar de Git:
