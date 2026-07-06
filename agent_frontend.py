@@ -36,18 +36,22 @@ with st.sidebar:
     
 st.title("🤖 Panel de Control Multi-Agente")
 # 🛡️ COMIENZO DEL ENVOLTORIO OCULTO PARA EL HONEYPOT
-  # 🛡️ Crear el Honeypot de forma nativa e invisible
-ocultador = st.empty()
-with ocultador:
-    st.text_input("Confirm Your Email Address", key="email_confirm", label_visibility="collapsed")
+st.text_input(
+    "Confirm Your Email Address", 
+    placeholder="Confirm Your Email Address", 
+    key="email_confirm", 
+    label_visibility="collapsed"
+)
 
-# Forzamos la desaparición total del contenedor por CSS
+# El CSS busca el input exacto por su placeholder o su ID de componente y oculta sus contenedores superiores
 st.markdown(
     """
     <style>
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(input[key="email_confirm"]),
-    div[data-testid="element-container"]:has(input[type="text"]) {
+    /* 1. Apunta al contenedor del componente de texto que contiene nuestro input clave */
+    div[data-testid="stTextInput"]:has(input[placeholder="Confirm Your Email Address"]),
+    div[data-testid="stTextInput"]:has(#email_confirm) {
         display: none !important;
+        visibility: hidden !important;
         height: 0px !important;
         margin: 0px !important;
         padding: 0px !important;
@@ -56,7 +60,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 # 🛡️ FIN DEL HONEYPOT
 # ==============================================================================
 # INDICADOR VISUAL DE INTENTOS DISPONIBLES
@@ -101,7 +104,7 @@ for msg in st.session_state.messages:
 # 5. PIPELINE DE PROCESAMIENTO MULTI-AGENTE
 # ==============================================================================
 
-prompt = st.chat_input("Escribe tu consulta técnica aquí...")
+prompt = st.chat_input("Escribe tu consulta aquí / Type your technical query here...")
 
 if prompt:
     # 🛑 VALIDACIÓN 1: Verificación del Honeypot (Seguridad perimetral anti-bots)

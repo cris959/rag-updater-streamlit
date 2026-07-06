@@ -1,21 +1,23 @@
 # --- Core Backend & IA ---
 groq>=0.11.0
-python-dotenv==1.0.1
+langchain-groq>=0.1.15
+python-dotenv>=1.0.1
 
 # --- Conectores Multi-Proveedor ---
 langchain-google-genai>=1.0.6
 langchain-mistralai>=0.1.7
 
 # --- LangChain Ecosystem ---
-langchain-community==0.2.5
-langchain-core==0.2.9
-langchain-text-splitters==0.2.0
+langchain-community>=0.2.5
+langchain-core>=0.2.9
+langchain-text-splitters>=0.2.0
 
-# --- Base de Datos Vectorial Real (Compila nativo en Ubuntu) ---
-faiss-cpu==1.9.0.post1
+# --- Base de Datos Vectorial Real ---
+faiss-cpu>=1.8.0
 
-# --- Herramientas de Búsqueda (Versión completa para Linux) ---
-duckduckgo-search==6.1.7
+# --- Herramientas de Búsqueda (Sin dependencia de Rust) ---
+duckduckgo-search==5.3.1.b1
 
 # --- Frontend Interactivo ---
-streamlit==1.36.0
+streamlit>=1.36.0
+streamlit-cookies-controller>=0.0.2
