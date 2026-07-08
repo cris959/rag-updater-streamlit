@@ -209,6 +209,27 @@ docker compose up -d
 # Detener los servicios por completo
 docker compose down
 ```
+___
+
+## 🚀 Estado Actual del Despliegue en Producción
+
+El proyecto se encuentra completamente desplegado, operativo y accesible de forma segura en un entorno de producción en la nube. 
+
+### 🏗️ Arquitectura e Infraestructura Utilizada
+* **Hosting:** Instancia ARM (Oracle Cloud Infrastructure - OCI) con sistema operativo Ubuntu Server.
+* **Contenerización:** El frontend bilingüe de la aplicación está empaquetado y corriendo de forma aislada mediante **Docker** en el puerto interno `8501`.
+* **Servidor Web y Proxy Inverso:** Se configuró **Nginx** para actuar como proxy inverso unificado. Esto permite que el backend (Java/Spring Boot - Foro Hub) y este nuevo frontend (Streamlit) convivan bajo el mismo dominio de forma armónica.
+* **Seguridad y SSL:** Se implementaron certificados criptográficos de **Let's Encrypt (vía Certbot)**. Toda la comunicación externa está forzada mediante **HTTPS**.
+
+### 🔗 Rutas de Acceso Configuradas
+El servidor Nginx actúa como selector de rutas bajo el dominio principal:
+* `https://foro-hub-christian.duckdns.org/` ➔ Direcciona al backend original en Java (`Foro Hub`).
+* `https://foro-hub-christian.duckdns.org/rag/` ➔ Direcciona mediante WebSockets seguros al contenedor de **Streamlit (Agente RAG)** en el puerto `8501`.
+
+### 🛡️ Medidas de Seguridad Aplicadas
+1.  **Honeypot Integrado:** Se implementó una trampa silenciosa (campo oculto) en el frontend para detectar, invalidar y bloquear automáticamente solicitudes automatizadas de bots y scrapers malignos.
+2.  **Firewall por Capas:** Tráfico regulado tanto a nivel interno del sistema operativo (`iptables` / `netfilter-persistent` en Ubuntu) como a nivel perimetral de la nube mediante las **Listas de Seguridad (Ingress Rules)** en la VCN de OCI para los puertos `80`, `443` y `8501`.
+___
 
 
 ## 🤝 ¿Cómo colaborar en el proyecto?
@@ -237,6 +258,9 @@ Bash
 git push origin feature/nueva-funcionalidad
 ```
 6. Abre un Pull Request (PR) detallando los cambios introducidos y qué problema resuelven para que lo revisemos y lo integremos a la rama **main**.
+
+
+
 
 ## 📝 Licencia
 Este proyecto está bajo la Licencia MIT. Para más detalles, consulta el archivo [LICENSE](https://github.com/cris959/rag-updater-streamlit/blob/main/LICENSE.txt) adjunto en este repositorio.
