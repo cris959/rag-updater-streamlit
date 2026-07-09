@@ -21,3 +21,15 @@ duckduckgo-search==5.3.1.b1
 # --- Frontend Interactivo ---
 streamlit>=1.36.0
 streamlit-cookies-controller>=0.0.2
+
+# --- DB Oracle ---
+oracledb>=2.0.0
+
+# Librerías para los Embeddings de OCI
+langchain-huggingface
+sentence-transformers
+
+# Configuración de repositorio liviano para PyTorch (Evita bajar 3GB de CUDA)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision

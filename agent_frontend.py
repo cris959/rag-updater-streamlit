@@ -6,15 +6,60 @@ st.set_page_config(page_title="Agente DevOps OCI", page_icon="🤖", layout="cen
 # 1. Importamos los prompts puros
 from prompts import PROMPT_FOROHUB, PROMPT_LANGCHAIN_MIGRATOR, PROMPT_RAG_OPTIMIZER, ROUTER_PROMPT_TEMPLATE
 # 2. Importamos la función de carga de datos cacheada
-#from config import cargar_conectores_de_datos, inicializar_modelos, obtener_router_chain
 from config import cargar_conectores_de_datos, inicializar_modelos, buscador_web
 # 3. Inicializamos las variables de datos de forma global y segura
 retriever_rag, CONTEXTO_FOROHUB_TXT = cargar_conectores_de_datos()
 llm_router, llm_gemini, llm_mistral_code, llm_deepseek_rag = inicializar_modelos()
 from streamlit_cookies_controller import CookieController
+import os
+import oracledb
 
 # Inicializamos el controlador de cookies
 controller = CookieController()
+
+# ==============================================================================
+# CONFIGURACIÓN DE BASE DE DATOS (OCI) - AUDITORÍA DEL RAG
+# ==============================================================================
+@st.cache_resource
+def obtener_conexion_db():
+    """
+    Centraliza la conexión a Oracle Cloud en modo Thin de forma persistente.
+    """
+    try:
+        user = os.getenv("OCI_DB_USER")
+        password = os.getenv("OCI_DB_PASSWORD")
+        dsn = os.getenv("OCI_DB_DSN")
+        ruta_wallet = os.getenv("TNS_ADMIN", "/app/Wallet_forohubdb2")        
+        wallet_password = os.getenv("OCI_WALLET_PASSWORD")
+        
+        return oracledb.connect(
+            user=user,
+            password=password,
+            dsn=dsn,
+            port=1522,
+            config_dir=ruta_wallet,
+            wallet_location=ruta_wallet,
+            wallet_password=wallet_password  # Ahora es 100% dinámica
+        )
+    except Exception as e:
+        print(f"❌ Error crítico al obtener conexión DB: {e}")
+        return None
+
+# 2. SEGUNDO: CORREMOS EL BLOQUE DE TELEMETRÍA (Ahora sí encuentra la función)
+try:
+    conexion_telemetria = obtener_conexion_db()
+    
+    if conexion_telemetria:
+        # IMPORTANTE: NO pongas conexion_telemetria.close() acá.
+        # Si la cerrás, los componentes de Streamlimt que corren milisegundos después
+        # se van a quedar sin conexión y lanzarán el DPY-1001.
+        print("🖥️ [Sistema] Telemetría validada en OCI con éxito en modo Thin.")
+    else:
+        print("⚠️ [Sistema] No se pudo establecer la conexión inicial de telemetría.")
+
+except Exception as e:
+    print(f"Error de configuración en el arranque de telemetría: {e}")
+
 
 LIMITE_CONSULTAS = 5
 # ==============================================================================
@@ -170,17 +215,17 @@ if prompt:
                 try:
                     respuesta_final = llm_gemini.invoke(mensajes).content
                 except Exception:
-                    # FALLBACK DE EMERGENCIA: Si Gemini cae, responde Mistral
+                    # ✅ CORREGIDO: Ahora sí invoca a Mistral si Gemini se cae
                     nombre_agente = "Agente Foro Hub (Contingencia - Mistral)"
                     st.caption("🔄 Reenrutando consulta al agente de contingencia por alta demanda...")
-                respuesta_final = llm_gemini.invoke(mensajes).content
+                    respuesta_final = llm_mistral_code.invoke(mensajes).content
         
         # 🤖 AGENTE 2: MIGRATOR (Principal: Mistral -> Refuerzo: Gemini)
         elif "MIGRATOR" in decision:
             nombre_agente = "Agente LangChain Migrator (Buscador Web + Mistral Large)"
             with st.spinner("Buscando en documentación viva de LangChain..."):
                 try:
-                  contexto_internet = buscador_web.invoke(prompt)
+                    contexto_internet = buscador_web.invoke(prompt)
                 except Exception as e:
                     contexto_internet = f"No se pudo obtener datos recientes: {str(e)}"    
             with st.spinner("Refactorizando sintaxis..."):
@@ -189,44 +234,49 @@ if prompt:
                     ("human", f"Web data: {contexto_internet}\nUser: {prompt}\n{recordatorio_idioma}")
                 ]
                 try:
-                 respuesta_final = llm_mistral_code.invoke(mensajes).content
+                    respuesta_final = llm_mistral_code.invoke(mensajes).content
                 except Exception as e:
                     # Activación AI de Refuerzo
                     nombre_agente = "Agente LangChain Migrator (Refuerzo - Gemini 2.5)"
                     st.caption("⚠️ Mistral experimenta alta demanda. Activando AI de refuerzo (Gemini)...")
                     respuesta_final = llm_gemini.invoke(mensajes).content
         
-        # 🤖 AGENTE 3: RAG OPTIMIZER (Principal: DeepSeek/Qwen -> Refuerzo: Mistral)
+       # ========================================================
+# 🤖 AGENTE 3: RAG OPTIMIZER (Migrado a Oracle Cloud 23ai Vector DB)
+# ========================================================
         else:
-            nombre_agente = "Agente Arquitecto RAG (FAISS + Qwen)"
-            if retriever_rag:
-                with st.spinner("Buscando en la base vectorial RAG..."):
-                    docs = retriever_rag.invoke(prompt)
-                    contexto_vectorial = "\n\n".join([d.page_content for d in docs])
-                with st.spinner("Analizando arquitectura..."):
-                    mensajes = [
-                        ("system", f"{PROMPT_RAG_OPTIMIZER}\n{recordatorio_idioma}"),
-                        ("human", f"Context: {contexto_vectorial}\nUser: {prompt}\n{recordatorio_idioma}")
-                    ]
-                    try:
-                      respuesta_final = llm_deepseek_rag.invoke(mensajes).content
-                    except Exception as e:
-                        # 🔄 Activación AI de Refuerzo
-                        nombre_agente = "Agente Arquitecto RAG (Refuerzo - Mistral Large)"
-                        st.caption("⚠️ El modelo RAG principal no responde. Activando AI de refuerzo (Mistral)...")
-                        respuesta_final = llm_mistral_code.invoke(mensajes).content
-            else:
-                respuesta_final = "⚠️ Sistema: La base de datos vectorial local para el Agente RAG no está disponible."
-      
+            nombre_agente = "Agente Arquitecto RAG (OCI Vector DB + DeepSeek)"
+            
+            # Importamos la función que creamos en tu backend para consultar OCI
+            from agent_backend import buscar_en_oracle_vector
+            
+            with st.spinner("Buscando de forma semántica en Oracle Cloud (OCI)..."):
+                # Recuperamos los chunks semánticos directo de OCI pasándole el prompt
+                contexto_vectorial = buscar_en_oracle_vector(prompt, top_k=3)
+            
+            with st.spinner("Analizando arquitectura..."):
+                mensajes = [
+                    ("system", f"{PROMPT_RAG_OPTIMIZER}\n{recordatorio_idioma}"),
+                    ("human", f"Context:\n{contexto_vectorial}\nUser: {prompt}\n{recordatorio_idioma}")
+                ]
+                try:
+                    respuesta_final = llm_deepseek_rag.invoke(mensajes).content
+                except Exception as e:
+                    # 🔄 Activación AI de Refuerzo (Se mantiene intacto por seguridad)
+                    nombre_agente = "Agente Arquitecto RAG (Refuerzo - Mistral Large)"
+                    st.caption("⚠️ El modelo RAG principal no responde. Activando AI de refuerzo (Mistral)...")
+                    respuesta_final = llm_mistral_code.invoke(mensajes).content
         # ==============================================================================
         # Paso C.2: Guarda de Idioma Post-Procesamiento (Garantía de salida unificada)
         # ==============================================================================
-        # 📋 Definimos la lista ACÁ AFUERA. Así existe SIEMPRE, elijas inglés o español.
-        indicadores_ingles = ["the ", "this ", "we can ", "instead of ", "here is ", "however"]
+        # 📋 Definimos la lista ACÁ AFUERA con espacios limpios para evitar falsos positivos
+        indicadores_ingles = [" the ", "this ", " we can ", "instead of ", "here is ", "however "]
 
         if respuesta_final and ("ESPAÑOL" in recordatorio_idioma.upper() or "SPANISH" in recordatorio_idioma.upper()):
             
-            if any(indicador in respuesta_final.lower() for indicador in indicadores_ingles):
+            # Buscamos minúsculas y agregamos espacios en los extremos del texto para matchear palabras sueltas
+            texto_analizar = f" {respuesta_final.lower()} "
+            if any(indicador in texto_analizar for indicador in indicadores_ingles):
                 with st.spinner("Refinando traducción de la narrativa técnica..."):
                     prompt_corrector = [
                         ("system", (
@@ -245,23 +295,51 @@ if prompt:
                     try:
                         respuesta_final = llm_gemini.invoke(prompt_corrector).content
                     except Exception:
+                        # ✅ CORREGIDO: Se agregó .content para extraer la cadena de texto limpia de Mistral
                         respuesta_final = llm_mistral_code.invoke(prompt_corrector).content
 
         # ==============================================================================
-        # Paso D: Renderizar respuesta y guardar en el historial con su metadata
+        # Paso D: Renderizar respuesta, persistir en OCI y guardar en el historial
         # ==============================================================================
         if respuesta_final:
             # 1. Mostramos la burbuja en pantalla inmediatamente para que el usuario la vea
             st.markdown(respuesta_final)
             st.caption(f"🤖 Realizado por: {nombre_agente}")
             
-            # 2. Guardamos de forma persistente en la lista de mensajes
+            # 2. Guardamos de forma persistente en la lista de mensajes local
             st.session_state.messages.append({
                 "role": "assistant", 
                 "content": respuesta_final, 
                 "agent": nombre_agente
             })
             
+            # 🗄️ PERSISTENCIA EN TU TABLA OPERATIVA DE OCI
+            try:
+                # Abrimos conexión usando la Wallet
+                conn_oci = obtener_conexion_db() 
+                if conn_oci:
+                    cursor_oci = conn_oci.cursor()
+                    
+                    sql_telemetria = """
+                        INSERT INTO TELEMETRIA_AGENTES 
+                        (PROMPT_USUARIO, AGENTE_ASIGNADO, DECISION_ROUTER, LONGITUD_RESPUESTA) 
+                        VALUES (:1, :2, :3, :4)
+                    """
+                    
+                    # Insertamos la telemetría del RAG sin tocar nada del Foro
+                    cursor_oci.execute(sql_telemetria, [
+                        prompt, 
+                        nombre_agente, 
+                        decision, 
+                        len(respuesta_final)
+                    ])
+                    
+                    conn_oci.commit()
+                    cursor_oci.close()
+                    conn_oci.close()
+            except Exception as e:
+                # Si parpadea la red, el chat sigue andando y te avisa en la terminal
+                print(f"Error de persistencia en telemetría OCI: {e}")
+            
             # 3. Forzamos la recarga de la interfaz para refrescar el contador visual
-            #    después de haber modificado todo el estado de la sesión de forma segura.
             st.rerun()

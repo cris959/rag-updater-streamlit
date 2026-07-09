@@ -1,8 +1,10 @@
 import os
 import platform
+import oracledb
 from dotenv import load_dotenv
 from groq import Groq
 from duckduckgo_search import DDGS
+from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
 
@@ -17,30 +19,68 @@ client = Groq(api_key=api_key)
 SISTEMA_OPERATIVO = platform.system()
 print(f"🖥️ [Sistema] Entorno detectado: {SISTEMA_OPERATIVO}")
 
+# 🧠 Inicializamos el modelo de Embeddings idéntico al del script de carga
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
 # ========================================================
-# 1. RECUPERACIÓN DE CONTEXTO LOCAL Y REGLAS DE NEGOCIO
+# 1. RECUPERACIÓN VECTORIAL EN OCI (ANTES FAISS LOCAL)
 # ========================================================
 
-def buscar_en_faiss_local(pregunta_usuario: str) -> str:
+def buscar_en_oracle_vector(pregunta_usuario: str, top_k: int = 3) -> str:
     """
-    Recupera el contexto de la infraestructura local desde el archivo .txt.
-    Si detecta términos críticos del negocio, inyecta dinámicamente las 
-    reglas de oro del proyecto Foro Hub para mitigar alucinaciones.
+    Vectoriza la consulta del usuario y realiza una búsqueda semántica nativa
+    K-NN sobre Oracle Autonomous Database utilizando la métrica de Coseno.
     """
     pregunta_lower = pregunta_usuario.lower()
-    contexto_base = ""
-    ruta_archivo = "contexto_infraestructura.txt"
-     
+    
+    # 1. Recuperar variables de OCI desde el .env
+    USER = os.getenv("OCI_DB_USER")
+    PASSWORD = os.getenv("OCI_DB_PASSWORD")
+    ruta_wallet = os.path.abspath(os.getenv("OCI_WALLET_LOCATION"))
+    table_name = "RAG_KNOWLEDGE_BASE"
+    
+    contexto_recuperado = []
+    
     try:
-        if os.path.exists(ruta_archivo):
-            with open(ruta_archivo, "r", encoding="utf-8") as f:
-                contexto_base = f.read()
-        else:
-            contexto_base = "⚠️ Contexto local (contexto_infraestructura.txt) no disponible físicamente."
+        # 2. Generar el embedding de la pregunta
+        vector_pregunta = embeddings.embed_query(pregunta_usuario)
+        
+        # 3. Conexión segura mTLS Thin Mode a OCI
+        wallet_password = os.getenv("OCI_WALLET_PASSWORD") # Levantamos la clave del .env de forma segura
+        
+        connection = oracledb.connect(
+            user=USER,
+            password=PASSWORD,
+            dsn=os.getenv("OCI_DB_DSN"),
+            port=1522,
+            config_dir=ruta_wallet,
+            wallet_location=ruta_wallet,
+            wallet_password=wallet_password  # Ahora es 100% dinámica y segura
+            # Quitamos 'thin=True' para evitar el error de argumento inesperado en tu versión
+        )
+        
+        with connection.cursor() as cursor:
+            # Consulta SQL nativa 23ai para recuperar los trozos más cercanos
+            sql = f"""
+                SELECT text, VECTOR_DISTANCE(vector, :1, COSINE) as distancia
+                FROM {table_name}
+                ORDER BY distancia
+                FETCH FIRST :2 ROWS ONLY
+            """
+            cursor.execute(sql, [str(vector_pregunta), top_k])
+            resultados = cursor.fetchall()
+            
+            for texto, distancia in resultados:
+                contexto_recuperado.append(texto)
+                
+        connection.close()
+        contexto_base = "\n---\n".join(contexto_recuperado)
+        
     except Exception as e:
-        contexto_base = f"Error al leer la base de conocimiento local: {str(e)}"
+        # Backup amigable en la interfaz si la red o OCI llegaran a fallar
+        contexto_base = f"⚠️ Sistema: La base de datos vectorial nativa en OCI no está disponible temporalmente. Detalle: {str(e)}"
 
-    # INYECTOR PRIORITARIO: Reglas duras de lógica para el dominio del negocio
+    # INYECTOR PRIORITARIO: Reglas duras de lógica para el dominio del negocio (Foro Hub)
     reglas_estrictas = ""
     if any(k in pregunta_lower for k in ["solucion", "marcar", "status", "estado", "topico", "tópico"]):
         reglas_estrictas = (
@@ -52,7 +92,7 @@ def buscar_en_faiss_local(pregunta_usuario: str) -> str:
             "- Prohibido inventar flujos de envío de emails o indicadores de rendimiento si no están explícitos."
         )
         
-    return f"{contexto_base}\n{reglas_estrictas}".strip()
+    return f"[Contexto Semántico Recuperado de OCI]:\n{contexto_base}\n{reglas_estrictas}".strip()
 
 # ========================================================
 # 2. BÚSQUEDA EN INTERNET REAL (PRODUCCIÓN / NOVEDADES)
@@ -79,9 +119,7 @@ def buscar_en_internet_real(query: str) -> str:
 
 def ejecutar_agent_loop(pregunta_usuario: str) -> str:
     """
-    Orquesta el flujo agéntico híbrido. Si las condiciones no fuerzan
-    herramientas, recupera el contexto local de manera preventiva 
-    para asegurar que el prompt del sistema esté respaldado por tu entorno.
+    Orquesta el flujo agéntico híbrido conectando dinámicamente con OCI Vector DB.
     """
     print(f"\n🤖 [Agente] Iniciando análisis para: '{pregunta_usuario}'")
     
@@ -89,23 +127,23 @@ def ejecutar_agent_loop(pregunta_usuario: str) -> str:
     contexto_web = ""
     pregunta_lower = pregunta_usuario.lower()
     
-    # Palabras clave expandidas para mapear infraestructura y flujos
+    # Palabras clave para consultar infraestructura, vectores o dominio
     palabras_clave_local = [
         "nginx", "puerto", "ubuntu", "local", "servidor", "foro", 
         "inventario", "faiss", "ruta", "endpoint", "swagger", "api", "extension",
-        "solucion", "status", "estado", "topico", "tópico"
+        "solucion", "status", "estado", "topico", "tópico", "vector", "base", "rag"
     ]
     
     # 1. Recuperación condicional de herramientas
     if any(k in pregunta_lower for k in palabras_clave_local):
-        contexto_local = buscar_en_faiss_local(pregunta_usuario)
+        contexto_local = buscar_en_oracle_vector(pregunta_usuario, top_k=3)
         
-    if any(k in pregunta_lower for k in ["seguridad", "internet", "ia", "web", "últimas", "actualidad", "rag"]):
+    if any(k in pregunta_lower for k in ["seguridad", "internet", "ia", "web", "últimas", "actualidad"]):
         contexto_web = buscar_en_internet_real(pregunta_usuario)
         
-    # 2. Respaldo de seguridad: si no disparó flags pero pregunta algo del entorno, cargamos local por defecto
+    # 2. Respaldo de seguridad: si no disparó flags específicos, consultamos OCI por defecto
     if not contexto_local and not contexto_web:
-        contexto_local = buscar_en_faiss_local(pregunta_usuario)
+        contexto_local = buscar_en_oracle_vector(pregunta_usuario, top_k=3)
         
     contexto_total = f"{contexto_local}\n\n{contexto_web}".strip()
     if not contexto_total:
@@ -130,7 +168,7 @@ def ejecutar_agent_loop(pregunta_usuario: str) -> str:
                 {"role": "user", "content": f"Contexto disponible:\n{contexto_total}\n\nConsulta: {pregunta_usuario}"}
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0.3,  # Baja creatividad, alta precisión técnica
+            temperature=0.3,  # Alta precisión técnica
         )
         return chat_completion.choices[0].message.content
     except Exception as e:

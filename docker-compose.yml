@@ -2,11 +2,13 @@ services:
   rag-app:
     build: .
     container_name: rag_updater_streamlit
+    restart: always
     ports:
-      - "8501:8501"
-    restart: unless-stopped
+     - "8501:8501"
+    volumes:
+     - .:/app
+     - /home/ubuntu/Wallet_forohubdb:/app/oracle_wallet
+    env_file:
+     - .env
     environment:
-      - OCI_METRICS_DATA=true  # Esto le sirve a tu detector automático si querés forzar producción
-    # Si usás variables de entorno para las keys de Gemini/Mistral, las podés mapear acá:
-    # env_file:
-    #   - .env
+     - TNS_ADMIN=/app/Wallet_forohubdb2
