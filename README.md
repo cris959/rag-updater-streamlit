@@ -232,6 +232,60 @@ El servidor Nginx actúa como selector de rutas bajo el dominio principal:
 ___
 
 
+# RAG Intelligent Agent & Telemetry Hub 🚀
+
+Este módulo implementa un sistema de **Generación Aumentada por Recuperación (RAG)** integrado con un Agente Inteligente, utilizando **Oracle Autonomous Database** en la nube como motor persistente y vectorial, y **Streamlit** como interfaz de usuario. 
+
+El proyecto está completamente dockerizado y diseñado bajo estándares de seguridad para entornos productivos.
+
+---
+
+## 🛠️ Estado de la Arquitectura Actual
+
+Actualmente, el sistema cuenta con las siguientes implementaciones clave:
+
+*   **Motor Vectorial Nativo**: Conexión robusta en modo Thin a Oracle Cloud (OCI), validando la persistencia e indexación de fragmentos en la base de datos a través de la tabla `RAG_KNOWLEDGE_BASE`.
+*   **Enrutamiento Inteligente (Decision Router)**: Implementación de lógica en el backend para la selección dinámica de modelos de Inteligencia Artificial según el contexto y complejidad de la consulta del usuario.
+*   **Telemetría en Tiempo Real**: Sistema de auditoría integrado que registra cada interacción, modelo seleccionado y longitud de respuesta en la tabla `TELEMETRIA_AGENTES` para un monitoreo continuo del rendimiento del RAG.
+*   **Infraestructura Desacoplada y Segura**: Dockerización completa del frontend y backend mediante `docker-compose`, aislando las credenciales mTLS de la Wallet de Oracle y centralizando la configuración mediante variables de entorno (`.env`).
+
+---
+
+## 🚀 Instrucciones de Despliegue Local
+
+### 1. Requisitos Previos
+*   Docker y Docker Compose instalados.
+*   Descargar la Wallet de tu instancia de Oracle Autonomous Database.
+
+### 2. Configuración del Entorno
+Cloná el archivo de plantilla `.env.example` para crear tu configuración local sin exponer credenciales reales:
+
+```
+bash
+cp .env.example .env
+```
+
+Asegurate de completar el **.env** con tus credenciales de OCI y colocar los archivos de tu Wallet descomprimidos dentro de la carpeta correspondiente en la raíz (la cual se encuentra protegida en el **.gitignore**):
+
+* Ruta origen en la máquina: **/home/ubuntu/Wallet_forohubdb3**
+
+* Ruta destino en el contenedor: **/app/oracle_wallet**
+
+* Variable TNS_ADMIN: **/app/Wallet_forohubdb3**
+
+⚠️ Nota de despliegue: El contenedor está configurado para reflejar y sincronizar el entorno seguro utilizando el mapeo directo de volúmenes y la variable de entorno TNS_ADMIN configurada de manera estática para la inicialización del cliente de Oracle.
+
+3. Levantar la Aplicación
+Para limpiar la caché del entorno y levantar el contenedor compilando la última versión del Agente, ejecutá:
+
+```
+Bash
+docker compose down --remove-orphans
+docker compose up --build -d
+```
+
+La interfaz de Streamlit quedará accesible de inmediato en el puerto http://localhost:8501.
+
 ## 🤝 ¿Cómo colaborar en el proyecto?
 ¡Toda ayuda para optimizar los agentes o mejorar el RAG es bienvenida! Para contribuir, sigue este flujo de trabajo estándar de Git:
 
