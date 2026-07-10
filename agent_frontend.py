@@ -29,7 +29,7 @@ def obtener_conexion_db():
         user = os.getenv("OCI_DB_USER")
         password = os.getenv("OCI_DB_PASSWORD")
         dsn = os.getenv("OCI_DB_DSN")
-        ruta_wallet = os.getenv("TNS_ADMIN", "/app/Wallet_forohubdb2")        
+        ruta_wallet = os.getenv("TNS_ADMIN", "/app/Wallet_forohubdb3")        
         wallet_password = os.getenv("OCI_WALLET_PASSWORD")
         
         return oracledb.connect(

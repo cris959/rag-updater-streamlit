@@ -7,8 +7,8 @@ services:
      - "8501:8501"
     volumes:
      - .:/app
-     - /home/ubuntu/Wallet_forohubdb:/app/oracle_wallet
+     - /home/ubuntu/Wallet_forohubdb3:/app/oracle_wallet
     env_file:
      - .env
     environment:
-     - TNS_ADMIN=/app/Wallet_forohubdb2
+     - TNS_ADMIN=/app/Wallet_forohubdb3
