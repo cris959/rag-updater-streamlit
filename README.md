@@ -251,6 +251,42 @@ Actualmente, el sistema cuenta con las siguientes implementaciones clave:
 
 ---
 
+## 📸 Demostración del Sistema
+
+### 1. Interfaz de Usuario (Streamlit)
+La aplicación web permite interactuar con el Agente Inteligente en tiempo real, procesando las consultas mediante el motor RAG.   
+
+![Interfaz de Streamlit](assets/dashboard_streamlit_1.png)
+
+
+![Interfaz de Streamlit](assets/dashboard_streamlit_2.png)
+
+### 2. Motor Vectorial y Telemetría en Oracle 23ai
+Monitoreo nativo dentro de la base de datos OCI. A la izquierda, la persistencia de embeddings en `RAG_KNOWLEDGE_BASE`; a la derecha, el log dinámico del Decision Router en `TELEMETRIA_AGENTES`.   
+
+![Consola de Oracle y Telemetría](assets/telemetria_oracle.png)
+
+
+### 3. Versatilidad del Motor Oracle 23ai (Casos de Uso)
+
+Para maximizar el rendimiento del Agente, la base de datos se configuró bajo un esquema híbrido que resuelve tres necesidades críticas del sistema:
+
+* **Gestión de Embeddings (Chunks de Conocimiento):** Evidencia de la fragmentación semántica almacenada vectorialmente para alimentar el contexto del RAG.    
+ 
+![Auditoría de Chunks y Fragmentación](assets/evidencia_chunks.png)
+
+* **Historial y Trazabilidad (Últimos Prompts):** Registro lineal de las consultas de los usuarios entrantes desde Streamlit, permitiendo auditorías de auditoría y auditorías de seguridad en vivo.    
+
+![Registro de Últimos Prompts](assets/evidencia_prompts.png)
+
+* **Métricas de Enrutamiento y Especialización de Agentes:** Vista analítica de la telemetría que valida cómo el `Decision Router` distribuye las cargas de trabajo analizando la consulta para derivarla al agente y modelo correspondiente:
+    * **Agente Foro Hub e Infraestructura Cloud** (Gemini 2.5 Flash)
+    * **Agente LangChain Migrator** (Buscador Web Avanzado + Mistral Large)
+    * **Agente Arquitecto RAG** (FAISS + Qwen/DeepSeek)
+
+![Analítica de Modelos y Agentes](assets/metricas_agentes.png)
+
+
 ## 🚀 Instrucciones de Despliegue Local
 
 ### 1. Requisitos Previos
