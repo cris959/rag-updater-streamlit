@@ -443,7 +443,13 @@ El **Decision Router** analiza la consulta técnica del usuario en lenguaje natu
 ---
 
 > ℹ️ **Nota de Auditoría y Telemetría:** Cada una de estas interacciones (el prompt del usuario, el agente seleccionado por el enrutador, los tokens consumidos y la respuesta final) se registra automáticamente en las tablas de auditoría de `forohubdb` para un control estricto del presupuesto (`Budget`) en OCI.
+___
+### 🌟 Agradecimientos
 
+Gracias al programa **Oracle Next Education** y **Alura Latam** por el desafío y las herramientas proporcionadas para
+llevar este proyecto al siguiente nivel con Inteligencia Artificial.
+___
+![Imagen Badge](assets/badge-rag-agente-ia.png)
 
 ## 📝 Licencia
 Este proyecto está bajo la Licencia MIT. Para más detalles, consulta el archivo [LICENSE](https://github.com/cris959/rag-updater-streamlit/blob/main/LICENSE.txt) adjunto en este repositorio.
