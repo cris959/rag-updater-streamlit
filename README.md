@@ -412,7 +412,37 @@ git push origin feature/nueva-funcionalidad
 ```
 6. Abre un Pull Request (PR) detallando los cambios introducidos y qué problema resuelven para que lo revisemos y lo integremos a la rama **main**.
 
+___
 
+## 🤖 El Sistema en Acción: Ejemplos de Interacción
+
+El **Decision Router** analiza la consulta técnica del usuario en lenguaje natural y la deriva instantáneamente al agente experto correspondiente. A continuación, se presentan ejemplos reales de lo que el sistema puede resolver:
+
+### 1. Módulo Core (Foro Hub) - Gestión de Comunidad
+* **Pregunta del usuario:**
+  > *"¿Cómo puedo ver los tópicos que creó el autor 'Christian Dev' en el Foro Hub y cuál es el estado actual del servidor?"*
+* **Respuesta del Agente (Gemini 2.5 Flash):**
+  > 💻 **[Agente Foro Hub]:** Consultando la persistencia en `forohubdb`... Detecté que el autor **Christian Dev** tiene 3 tópicos activos en la plataforma. El estado del servidor en la IP enmascarada de OCI es estable (HTTP 200). Te adjunto el listado detallado de las discusiones encontradas...
+
+---
+
+### 2. Módulo de Migración - Especialista en Bases de Datos
+* **Pregunta del usuario:**
+  > *"Necesito migrar un script de PL/SQL antiguo de Oracle 11g a la nueva base de datos autónoma Oracle 26ai. ¿Qué funciones vectoriales nativas cambian?"*
+* **Respuesta del Agente (Mistral Large via LCEL):**
+  > 🌪️ **[Agente Migrator]:** Analizando compatibilidad de dialectos... Para aprovechar al máximo **Oracle 26ai**, te recomiendo reemplazar los índices tradicionales por bloques `VECTOR_DISTANCE` utilizando la métrica `COSINE`. Tu script original de PL/SQL ha sido optimizado. Aquí tienes el bloque de código compatible con la infraestructura Always Free...
+
+---
+
+### 3. Módulo Arquitecto RAG - Búsqueda Semántica Avanzada
+* **Pregunta del usuario:**
+  > *"¿Cuáles son los fragmentos de código más relevantes en nuestra base de conocimientos sobre la configuración de seguridad en la VCN para habilitar Streamlit?"*
+* **Respuesta del Agente (DeepSeek / Qwen):**
+  > 🐋 **[Arquitecto RAG]:** Ejecutando búsqueda semántica... La base de conocimientos actual detalla la infraestructura core de Foro Hub (OCI, Ubuntu, Nginx en puerto 8000 y certificados SSL). Sin embargo, se detecta una brecha de información: no existen registros de reglas de ingreso (Ingress Rules) para el puerto 8501 de Streamlit en la VCN. Procediendo a escalar la consulta para su próxima indexación.
+
+---
+
+> ℹ️ **Nota de Auditoría y Telemetría:** Cada una de estas interacciones (el prompt del usuario, el agente seleccionado por el enrutador, los tokens consumidos y la respuesta final) se registra automáticamente en las tablas de auditoría de `forohubdb` para un control estricto del presupuesto (`Budget`) en OCI.
 
 
 ## 📝 Licencia
