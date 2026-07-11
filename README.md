@@ -1,3 +1,5 @@
+[![Visitor Badge](https://api.visitorbadge.io/api/VisitorHit?user=cris959&repo=rag-updater-streamlit&countColor=%23ff007f)](https://www.github.com/cris959/rag-updater-streamlit)
+
 # 🤖 Agente de Infraestructura & Foro Hub (Frontend Chat)
 
 Este repositorio contiene la interfaz de usuario interactiva desarrollada en **Streamlit** para interactuar con el Agente de Inteligencia Artificial enfocado en la infraestructura de **Foro Hub**. La aplicación implementa una arquitectura RAG (Retrieval-Augmented Generation) local para responder consultas técnicas precisas basándose en el entorno real de despliegue.
@@ -26,7 +28,7 @@ El agente está entrenado para dar soporte sobre la siguiente arquitectura de in
 
 * Backend Relacionado: API REST desarrollada con Spring Boot 3.x y Java 21.
 
-* Persistencia y Conexión de Datos: Base de datos Oracle Cloud (23ai/26ai) de alta disponibilidad (**@forohubdb_high**). Utiliza credenciales cifradas con Oracle Wallet dinámico mediante la siguiente configuración externalizada:
+* Persistencia y Conexión de Datos: Base de datos Oracle Cloud (26ai) de alta disponibilidad (**@forohubdb_high**). Utiliza credenciales cifradas con Oracle Wallet dinámico mediante la siguiente configuración externalizada:
 ````
 Properties
 # CONFIGURACION DE CONEXION (ORACLE 26ai)
@@ -261,13 +263,13 @@ La aplicación web permite interactuar con el Agente Inteligente en tiempo real,
 
 ![Interfaz de Streamlit](assets/dashboard_streamlit_2.png)
 
-### 2. Motor Vectorial y Telemetría en Oracle 23ai
+### 2. Motor Vectorial y Telemetría en Oracle 26ai
 Monitoreo nativo dentro de la base de datos OCI. A la izquierda, la persistencia de embeddings en `RAG_KNOWLEDGE_BASE`; a la derecha, el log dinámico del Decision Router en `TELEMETRIA_AGENTES`.   
 
 ![Consola de Oracle y Telemetría](assets/telemetria_oracle.png)
 
 
-### 3. Versatilidad del Motor Oracle 23ai (Casos de Uso)
+### 3. Versatilidad del Motor Oracle 26ai (Casos de Uso)
 
 Para maximizar el rendimiento del Agente, la base de datos se configuró bajo un esquema híbrido que resuelve tres necesidades críticas del sistema:
 
@@ -285,6 +287,67 @@ Para maximizar el rendimiento del Agente, la base de datos se configuró bajo un
     * **Agente Arquitecto RAG** (FAISS + Qwen/DeepSeek)
 
 ![Analítica de Modelos y Agentes](assets/metricas_agentes.png)
+
+## ☁️ Ecosistema Cloud: Integración Core Foro Hub & Agentes de IA    
+
+Diseño conceptual de la infraestructura **Always Free** en la región de Chile Central, detallando la convivencia de los entornos, el aislamiento de red (VCN) y el flujo de los agentes autónomos hacia la base de datos vectorial Oracle 26ai.
+
+```mermaid
+graph TD
+  classDef oci fill:#7FA6B3,stroke:#4A6B78,stroke-width:2px,color:#0f1720;
+  classDef app fill:#4A6B78,stroke:#2d3f45,stroke-width:1px,color:#ffffff;
+  classDef db fill:#8AAE9B,stroke:#5f8a6e,stroke-width:2px,color:#0f1720;
+  classDef ext fill:#9EA3A8,stroke:#6f7376,stroke-width:1px,color:#0f1720;
+  classDef label fill:#F4F6F7,stroke:#d6dcdc,stroke-width:0.5px,color:#0f1720;
+
+  subgraph OCI_Region["☁️ Infraestructura en OCI (Chile Central)"]
+    direction TB
+    
+    Budget["💰 Budget (Presupuesto-Seguridad)"]
+    SecList["🔒 Default Security List<br/>(Puertos: 80, 443, 8501)"]
+
+    subgraph VCN["🌐 Virtual Cloud Network (VCN_Test)"]
+      direction TB
+
+      %% Servidor e Infraestructura física
+      VM_Info["💻 Servidor_Foro_Hub<br/>(OS: Ubuntu 24.04 LTS)"]
+      BootVol["💾 Boot Volume<br/>(47 GB Storage)"]
+
+      %% Componentes de Software (Módulos independientes)
+      ForoCode["📦 Módulo Core: Foro Hub<br/>(Backend Logic / Archivo Estático)"]
+      StreamlitApp["🚀 Módulo IA: App Streamlit<br/>(Puerto 8501 - Decision Router)"]
+      
+      %% Base de Datos
+      AutonomousDB["🗄️ Autonomous AI Database (forohubdb)<br/>[Oracle 26ai - Always Free]<br/>(Backup: 40 GB)"]
+    end
+  end
+
+  subgraph External_APIs["🌐 Integración Externa: Modelos de Lenguaje"]
+    direction LR
+    Gemini["♊ Gemini 2.5 Flash"]
+    Mistral["🌪️ Mistral Large<br/>(LCEL Migrator)"]
+    DeepSeek["🐋 DeepSeek / Qwen<br/>(Arquitecto RAG)"]
+  end
+
+  %% Relaciones de Infraestructura del Servidor
+  VM_Info --- BootVol
+  SecList -.-> VM_Info
+  
+  %% Flujos Lógicos Libres de Cruces
+  ForoCode -->|Auditoría / Persistencia| AutonomousDB
+  StreamlitApp -->|1. Búsqueda Vectorial y Telemetría| AutonomousDB
+  StreamlitApp -->|2. Orquestación ReAct| Gemini
+  StreamlitApp -->|2. Orquestación ReAct| Mistral
+  StreamlitApp -->|2. Orquestación ReAct| DeepSeek
+
+  %% Aplicación de Estilos
+  class OCI_Region,VCN,VM_Info oci;
+  class ForoCode,StreamlitApp app;
+  class AutonomousDB db;
+  class External_APIs,Gemini,Mistral,DeepSeek ext;
+  class SecList,BootVol,Budget label;
+  ```
+
 
 
 ## 🚀 Instrucciones de Despliegue Local

@@ -35,6 +35,9 @@ GROQ_API_KEY
 keys.txt
 secrets.toml
 
+# Permitir explícitamente que se suba el ejemplo
+!.env.example
+
 # --- Archivos de Datos (Evita subir CSVs pesados a GitHub) ---
 *.csv
 *.xlsx
@@ -78,3 +81,4 @@ data/
 backups/
 
 Wallet_forohubdb3/
+.pem
